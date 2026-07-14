@@ -112,7 +112,7 @@ export default function AdminUsers() {
         fullName: form.fullName,
         role: form.role,
         clientId: form.role === 'client' ? form.clientId : undefined,
-        projectIds: form.role === 'client' ? form.projectIds : [],
+        projectIds: [],
       };
       if (editingUser) {
         const { data, error } = await supabase.functions.invoke('admin-manage-users', {
@@ -261,7 +261,6 @@ export default function AdminUsers() {
                     <TableHead>Email</TableHead>
                     <TableHead>Nível</TableHead>
                     <TableHead>Empresa</TableHead>
-                    <TableHead>Projetos</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -284,22 +283,6 @@ export default function AdminUsers() {
                           <Badge variant="outline" className="text-xs">{clientNameById(u.client_id)}</Badge>
                         ) : (
                           <span className="text-xs text-destructive">Sem empresa</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {u.role === 'admin' ? (
-                          <span className="text-xs text-muted-foreground">Todos</span>
-                        ) : u.project_ids.length === 0 ? (
-                          <span className="text-xs text-muted-foreground">Nenhum</span>
-                        ) : (
-                          <div className="flex flex-wrap gap-1">
-                            {u.project_ids.slice(0, 3).map(pid => (
-                              <Badge key={pid} variant="outline" className="text-xs">{projectNameById(pid)}</Badge>
-                            ))}
-                            {u.project_ids.length > 3 && (
-                              <Badge variant="outline" className="text-xs">+{u.project_ids.length - 3}</Badge>
-                            )}
-                          </div>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
@@ -383,57 +366,8 @@ export default function AdminUsers() {
                         </SelectContent>
                       </Select>
                       <p className="text-xs text-muted-foreground">
-                        O usuário só pode receber acesso a projetos desta empresa.
+                        O usuário terá acesso automaticamente a todos os projetos desta empresa.
                       </p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Projetos com Acesso</Label>
-                      <Popover open={projectPopoverOpen} onOpenChange={setProjectPopoverOpen}>
-                        <PopoverTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="w-full justify-between"
-                            disabled={!form.clientId}
-                          >
-                            <span className="truncate">
-                              {!form.clientId
-                                ? 'Selecione a empresa primeiro'
-                                : form.projectIds.length === 0
-                                  ? 'Selecione os projetos'
-                                  : `${form.projectIds.length} projeto(s) selecionado(s)`}
-                            </span>
-                            <Search className="h-4 w-4 opacity-50" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popper-anchor-width] p-0" align="start">
-                          <Command>
-                            <CommandInput placeholder="Buscar projeto..." />
-                            <CommandList>
-                              <CommandEmpty>Nenhum projeto encontrado para esta empresa</CommandEmpty>
-                              <CommandGroup>
-                                {formProjects.map(p => (
-                                  <CommandItem key={p.id} onSelect={() => toggleProject(p.id)}>
-                                    <Check className={cn('mr-2 h-4 w-4', form.projectIds.includes(p.id) ? 'opacity-100' : 'opacity-0')} />
-                                    <span>{p.name}</span>
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
-                      {form.projectIds.length > 0 && (
-                        <div className="flex flex-wrap gap-1 pt-1">
-                          {form.projectIds.map(pid => (
-                            <Badge key={pid} variant="secondary" className="text-xs cursor-pointer"
-                              onClick={() => toggleProject(pid)}>
-                              {projectNameById(pid)} ×
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   </>
                 )}
