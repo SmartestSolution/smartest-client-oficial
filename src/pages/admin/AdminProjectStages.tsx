@@ -220,6 +220,8 @@ export default function AdminProjectStages() {
                 handleSaveNotes={handleSaveNotes}
                 handleSaveDates={handleSaveDates}
                 updatePending={updateStage.isPending}
+                minDate={projectStart}
+                maxDate={projectEnd}
               />
             ) : (
               <div className="flex flex-col items-center justify-center py-12">
