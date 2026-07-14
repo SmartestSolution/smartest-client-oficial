@@ -37,10 +37,11 @@ Deno.serve(async (req) => {
       if (listErr) return json({ error: listErr.message }, 400)
 
       const userIds = usersData.users.map(u => u.id)
-      const [{ data: profiles }, { data: roles }, { data: projectUsers }] = await Promise.all([
+      const [{ data: profiles }, { data: roles }, { data: projectUsers }, { data: clientUsers }] = await Promise.all([
         supabaseAdmin.from('profiles').select('user_id, full_name, company').in('user_id', userIds),
         supabaseAdmin.from('user_roles').select('user_id, role').in('user_id', userIds),
         supabaseAdmin.from('project_users').select('user_id, project_id').in('user_id', userIds),
+        supabaseAdmin.from('client_users').select('user_id, client_id').in('user_id', userIds),
       ])
 
       const users = usersData.users.map(u => ({
@@ -51,9 +52,11 @@ Deno.serve(async (req) => {
         company: profiles?.find(p => p.user_id === u.id)?.company || null,
         role: roles?.find(r => r.user_id === u.id)?.role || 'client',
         project_ids: projectUsers?.filter(pu => pu.user_id === u.id).map(pu => pu.project_id) || [],
+        client_id: clientUsers?.find(cu => cu.user_id === u.id)?.client_id || null,
       }))
       return json({ users })
     }
+
 
     if (action === 'create') {
       const { email, password, fullName, role, projectIds } = body
