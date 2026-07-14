@@ -280,22 +280,15 @@ export default function ProjectOverview() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-5 gap-2">
-                {sortedStages.map((s, idx) => {
-                  const isDone = s.status === 'completed';
-                  const isCurrent = s.id === currentStage?.id && !isDone;
-                  return (
-                    <Link key={s.id} to={`/projeto/${id}/progresso`} className="group">
-                      <div className={`text-[10px] uppercase tracking-wider mb-1 truncate font-medium ${
-                        isDone ? 'text-success' : isCurrent ? 'text-primary' : 'text-muted-foreground'
-                      }`}>
-                        {idx + 1}. {s.stage_name}
-                      </div>
-                      <div className={`h-1.5 rounded-full ${
-                        isDone ? 'bg-success' : isCurrent ? 'bg-primary' : 'bg-muted'
-                      } group-hover:opacity-80 transition`} />
-                    </Link>
-                  );
-                })}
+                {sortedStages.map((s, idx) => (
+                  <MiniStageTimelineItem
+                    key={s.id}
+                    stage={s}
+                    idx={idx}
+                    projectId={id}
+                    currentStageId={currentStage?.id}
+                  />
+                ))}
               </div>
             </CardContent>
           </Card>
