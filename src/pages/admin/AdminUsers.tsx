@@ -286,22 +286,6 @@ export default function AdminUsers() {
                           <span className="text-xs text-destructive">Sem empresa</span>
                         )}
                       </TableCell>
-                      <TableCell>
-                        {u.role === 'admin' ? (
-                          <span className="text-xs text-muted-foreground">Todos</span>
-                        ) : u.project_ids.length === 0 ? (
-                          <span className="text-xs text-muted-foreground">Nenhum</span>
-                        ) : (
-                          <div className="flex flex-wrap gap-1">
-                            {u.project_ids.slice(0, 3).map(pid => (
-                              <Badge key={pid} variant="outline" className="text-xs">{projectNameById(pid)}</Badge>
-                            ))}
-                            {u.project_ids.length > 3 && (
-                              <Badge variant="outline" className="text-xs">+{u.project_ids.length - 3}</Badge>
-                            )}
-                          </div>
-                        )}
-                      </TableCell>
                       <TableCell className="text-right">
                         <Button variant="ghost" size="icon" onClick={() => handleEdit(u)}>
                           <Pencil className="h-4 w-4" />
