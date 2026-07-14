@@ -366,57 +366,8 @@ export default function AdminUsers() {
                         </SelectContent>
                       </Select>
                       <p className="text-xs text-muted-foreground">
-                        O usuário só pode receber acesso a projetos desta empresa.
+                        O usuário terá acesso automaticamente a todos os projetos desta empresa.
                       </p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Projetos com Acesso</Label>
-                      <Popover open={projectPopoverOpen} onOpenChange={setProjectPopoverOpen}>
-                        <PopoverTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="w-full justify-between"
-                            disabled={!form.clientId}
-                          >
-                            <span className="truncate">
-                              {!form.clientId
-                                ? 'Selecione a empresa primeiro'
-                                : form.projectIds.length === 0
-                                  ? 'Selecione os projetos'
-                                  : `${form.projectIds.length} projeto(s) selecionado(s)`}
-                            </span>
-                            <Search className="h-4 w-4 opacity-50" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popper-anchor-width] p-0" align="start">
-                          <Command>
-                            <CommandInput placeholder="Buscar projeto..." />
-                            <CommandList>
-                              <CommandEmpty>Nenhum projeto encontrado para esta empresa</CommandEmpty>
-                              <CommandGroup>
-                                {formProjects.map(p => (
-                                  <CommandItem key={p.id} onSelect={() => toggleProject(p.id)}>
-                                    <Check className={cn('mr-2 h-4 w-4', form.projectIds.includes(p.id) ? 'opacity-100' : 'opacity-0')} />
-                                    <span>{p.name}</span>
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
-                      {form.projectIds.length > 0 && (
-                        <div className="flex flex-wrap gap-1 pt-1">
-                          {form.projectIds.map(pid => (
-                            <Badge key={pid} variant="secondary" className="text-xs cursor-pointer"
-                              onClick={() => toggleProject(pid)}>
-                              {projectNameById(pid)} ×
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   </>
                 )}
