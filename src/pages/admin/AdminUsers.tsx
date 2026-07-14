@@ -27,6 +27,7 @@ type ManagedUser = {
   company: string | null;
   role: 'admin' | 'client';
   project_ids: string[];
+  client_id: string | null;
   created_at: string;
 };
 
@@ -35,10 +36,11 @@ type FormState = {
   email: string;
   password: string;
   role: 'admin' | 'client';
+  clientId: string;
   projectIds: string[];
 };
 
-const emptyForm: FormState = { fullName: '', email: '', password: '', role: 'client', projectIds: [] };
+const emptyForm: FormState = { fullName: '', email: '', password: '', role: 'client', clientId: '', projectIds: [] };
 
 export default function AdminUsers() {
   const queryClient = useQueryClient();
@@ -46,6 +48,8 @@ export default function AdminUsers() {
   const [editingUser, setEditingUser] = useState<ManagedUser | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [search, setSearch] = useState('');
+  const [companyFilter, setCompanyFilter] = useState<string>('all');
+  const [roleFilter, setRoleFilter] = useState<string>('all');
   const [projectPopoverOpen, setProjectPopoverOpen] = useState(false);
 
   const { data: users, isLoading } = useQuery({
@@ -60,37 +64,63 @@ export default function AdminUsers() {
     },
   });
 
+  const { data: clients } = useQuery({
+    queryKey: ['admin-users-clients'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('clients').select('id, name').order('name');
+      if (error) throw error;
+      return data as Array<{ id: string; name: string }>;
+    },
+  });
+
   const { data: projects } = useQuery({
     queryKey: ['admin-users-projects'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('projects')
-        .select('id, name, clients(name)')
+        .select('id, name, client_id, clients(name)')
         .order('name');
       if (error) throw error;
-      return data as Array<{ id: string; name: string; clients: { name: string } | null }>;
+      return data as Array<{ id: string; name: string; client_id: string; clients: { name: string } | null }>;
     },
   });
 
   const filtered = useMemo(() => {
     if (!users) return [];
     const q = search.toLowerCase();
-    return users.filter(u =>
-      !q || u.full_name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
-    );
-  }, [users, search]);
+    return users.filter(u => {
+      if (q && !u.full_name.toLowerCase().includes(q) && !u.email.toLowerCase().includes(q)) return false;
+      if (roleFilter !== 'all' && u.role !== roleFilter) return false;
+      if (companyFilter !== 'all') {
+        if (companyFilter === 'none') { if (u.client_id) return false; }
+        else if (u.client_id !== companyFilter) return false;
+      }
+      return true;
+    });
+  }, [users, search, roleFilter, companyFilter]);
+
+  // Projetos filtrados pela empresa selecionada no formulário
+  const formProjects = useMemo(() => {
+    if (!projects) return [];
+    if (!form.clientId) return [];
+    return projects.filter(p => p.client_id === form.clientId);
+  }, [projects, form.clientId]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
+      const payload = {
+        fullName: form.fullName,
+        role: form.role,
+        clientId: form.role === 'client' ? form.clientId : undefined,
+        projectIds: form.role === 'client' ? form.projectIds : [],
+      };
       if (editingUser) {
         const { data, error } = await supabase.functions.invoke('admin-manage-users', {
           body: {
             action: 'update',
             userId: editingUser.id,
-            fullName: form.fullName,
             password: form.password || undefined,
-            role: form.role,
-            projectIds: form.role === 'client' ? form.projectIds : [],
+            ...payload,
           },
         });
         if (error) throw error;
@@ -101,9 +131,7 @@ export default function AdminUsers() {
             action: 'create',
             email: form.email,
             password: form.password,
-            fullName: form.fullName,
-            role: form.role,
-            projectIds: form.role === 'client' ? form.projectIds : [],
+            ...payload,
           },
         });
         if (error) throw error;
@@ -147,6 +175,7 @@ export default function AdminUsers() {
       email: u.email,
       password: '',
       role: u.role,
+      clientId: u.client_id || '',
       projectIds: u.project_ids,
     });
     setIsOpen(true);
@@ -158,6 +187,7 @@ export default function AdminUsers() {
     if (!editingUser) {
       if (!form.email.trim() || !form.password.trim()) return toast.error('Preencha email e senha');
     }
+    if (form.role === 'client' && !form.clientId) return toast.error('Selecione a empresa');
     saveMutation.mutate();
   };
 
@@ -171,6 +201,7 @@ export default function AdminUsers() {
   };
 
   const projectNameById = (id: string) => projects?.find(p => p.id === id)?.name || id;
+  const clientNameById = (id: string | null) => (id ? clients?.find(c => c.id === id)?.name : null) || null;
 
   return (
     <AppLayout>
@@ -190,12 +221,32 @@ export default function AdminUsers() {
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" /> Todos os Usuários
             </CardTitle>
-            <CardDescription>Admins visualizam todos os projetos. Usuários veem apenas os projetos vinculados.</CardDescription>
+            <CardDescription>Admins visualizam todos os projetos. Usuários veem apenas os projetos vinculados à sua empresa.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="relative max-w-sm">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Buscar por nome ou email..." value={search} onChange={e => setSearch(e.target.value)} className="pl-8" />
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="relative min-w-[220px] flex-1 max-w-sm">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="Buscar por nome ou email..." value={search} onChange={e => setSearch(e.target.value)} className="pl-8" />
+              </div>
+              <Select value={companyFilter} onValueChange={setCompanyFilter}>
+                <SelectTrigger className="w-[220px]"><SelectValue placeholder="Empresa" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as empresas</SelectItem>
+                  <SelectItem value="none">Sem empresa</SelectItem>
+                  {clients?.map(c => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={roleFilter} onValueChange={setRoleFilter}>
+                <SelectTrigger className="w-[180px]"><SelectValue placeholder="Nível" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os níveis</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="client">Usuário</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {isLoading ? (
@@ -209,6 +260,7 @@ export default function AdminUsers() {
                     <TableHead>Nome</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Nível</TableHead>
+                    <TableHead>Empresa</TableHead>
                     <TableHead>Projetos</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
@@ -223,6 +275,15 @@ export default function AdminUsers() {
                           <Badge className="gap-1"><Shield className="h-3 w-3" /> Admin</Badge>
                         ) : (
                           <Badge variant="secondary" className="gap-1"><UserCircle className="h-3 w-3" /> Usuário</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {u.role === 'admin' ? (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        ) : clientNameById(u.client_id) ? (
+                          <Badge variant="outline" className="text-xs">{clientNameById(u.client_id)}</Badge>
+                        ) : (
+                          <span className="text-xs text-destructive">Sem empresa</span>
                         )}
                       </TableCell>
                       <TableCell>
@@ -297,7 +358,7 @@ export default function AdminUsers() {
                 </div>
                 <div className="space-y-2">
                   <Label>Nível de Acesso *</Label>
-                  <Select value={form.role} onValueChange={(v: 'admin' | 'client') => setForm({ ...form, role: v })}>
+                  <Select value={form.role} onValueChange={(v: 'admin' | 'client') => setForm({ ...form, role: v, clientId: v === 'admin' ? '' : form.clientId, projectIds: v === 'admin' ? [] : form.projectIds })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="admin">Admin — Vê todos os projetos</SelectItem>
@@ -307,50 +368,74 @@ export default function AdminUsers() {
                 </div>
 
                 {form.role === 'client' && (
-                  <div className="space-y-2">
-                    <Label>Projetos com Acesso</Label>
-                    <Popover open={projectPopoverOpen} onOpenChange={setProjectPopoverOpen}>
-                      <PopoverTrigger asChild>
-                        <Button type="button" variant="outline" className="w-full justify-between">
-                          <span className="truncate">
-                            {form.projectIds.length === 0
-                              ? 'Selecione os projetos'
-                              : `${form.projectIds.length} projeto(s) selecionado(s)`}
-                          </span>
-                          <Search className="h-4 w-4 opacity-50" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[--radix-popper-anchor-width] p-0" align="start">
-                        <Command>
-                          <CommandInput placeholder="Buscar projeto..." />
-                          <CommandList>
-                            <CommandEmpty>Nenhum projeto encontrado</CommandEmpty>
-                            <CommandGroup>
-                              {projects?.map(p => (
-                                <CommandItem key={p.id} onSelect={() => toggleProject(p.id)}>
-                                  <Check className={cn('mr-2 h-4 w-4', form.projectIds.includes(p.id) ? 'opacity-100' : 'opacity-0')} />
-                                  <div className="flex flex-col">
+                  <>
+                    <div className="space-y-2">
+                      <Label>Empresa *</Label>
+                      <Select
+                        value={form.clientId}
+                        onValueChange={(v) => setForm({ ...form, clientId: v, projectIds: [] })}
+                      >
+                        <SelectTrigger><SelectValue placeholder="Selecione a empresa" /></SelectTrigger>
+                        <SelectContent>
+                          {clients?.map(c => (
+                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        O usuário só pode receber acesso a projetos desta empresa.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Projetos com Acesso</Label>
+                      <Popover open={projectPopoverOpen} onOpenChange={setProjectPopoverOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full justify-between"
+                            disabled={!form.clientId}
+                          >
+                            <span className="truncate">
+                              {!form.clientId
+                                ? 'Selecione a empresa primeiro'
+                                : form.projectIds.length === 0
+                                  ? 'Selecione os projetos'
+                                  : `${form.projectIds.length} projeto(s) selecionado(s)`}
+                            </span>
+                            <Search className="h-4 w-4 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popper-anchor-width] p-0" align="start">
+                          <Command>
+                            <CommandInput placeholder="Buscar projeto..." />
+                            <CommandList>
+                              <CommandEmpty>Nenhum projeto encontrado para esta empresa</CommandEmpty>
+                              <CommandGroup>
+                                {formProjects.map(p => (
+                                  <CommandItem key={p.id} onSelect={() => toggleProject(p.id)}>
+                                    <Check className={cn('mr-2 h-4 w-4', form.projectIds.includes(p.id) ? 'opacity-100' : 'opacity-0')} />
                                     <span>{p.name}</span>
-                                    {p.clients?.name && <span className="text-xs text-muted-foreground">{p.clients.name}</span>}
-                                  </div>
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
-                    {form.projectIds.length > 0 && (
-                      <div className="flex flex-wrap gap-1 pt-1">
-                        {form.projectIds.map(pid => (
-                          <Badge key={pid} variant="secondary" className="text-xs cursor-pointer"
-                            onClick={() => toggleProject(pid)}>
-                            {projectNameById(pid)} ×
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                      {form.projectIds.length > 0 && (
+                        <div className="flex flex-wrap gap-1 pt-1">
+                          {form.projectIds.map(pid => (
+                            <Badge key={pid} variant="secondary" className="text-xs cursor-pointer"
+                              onClick={() => toggleProject(pid)}>
+                              {projectNameById(pid)} ×
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </>
                 )}
               </div>
               <DialogFooter>
