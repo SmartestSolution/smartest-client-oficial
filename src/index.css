@@ -1,0 +1,139 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Smartest Solution Design System
+   Cores corporativas baseadas no logo: Azul #1565C0 e Cinza #7B8794
+*/
+
+@layer base {
+  :root {
+    /* Base colors */
+    --background: 0 0% 98%;
+    --foreground: 213 40% 16%;
+
+    /* Cards e Popover */
+    --card: 0 0% 100%;
+    --card-foreground: 213 40% 16%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 213 40% 16%;
+
+    /* Primary - Azul Smartest #1565C0 */
+    --primary: 210 76% 42%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary - Cinza Smartest #7B8794 */
+    --secondary: 212 10% 53%;
+    --secondary-foreground: 0 0% 100%;
+
+    /* Muted */
+    --muted: 210 20% 96%;
+    --muted-foreground: 212 10% 45%;
+
+    /* Accent - Azul claro */
+    --accent: 210 60% 95%;
+    --accent-foreground: 210 76% 35%;
+
+    /* Destructive */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Success */
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+
+    /* Warning */
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    /* Borders and inputs */
+    --border: 214 20% 88%;
+    --input: 214 20% 88%;
+    --ring: 210 76% 42%;
+
+    --radius: 0.5rem;
+
+    /* Sidebar - Azul escuro corporativo */
+    --sidebar-background: 210 76% 25%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 210 76% 25%;
+    --sidebar-accent: 210 76% 35%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 210 60% 35%;
+    --sidebar-ring: 210 76% 50%;
+    --sidebar-muted: 210 50% 40%;
+
+    /* Custom gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(210 76% 42%) 0%, hsl(210 76% 30%) 100%);
+    --gradient-hero: linear-gradient(180deg, hsl(210 76% 42%) 0%, hsl(210 76% 35%) 100%);
+  }
+
+  .dark {
+    --background: 213 40% 10%;
+    --foreground: 210 20% 96%;
+
+    --card: 213 40% 12%;
+    --card-foreground: 210 20% 96%;
+    --popover: 213 40% 12%;
+    --popover-foreground: 210 20% 96%;
+
+    --primary: 210 76% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 212 15% 30%;
+    --secondary-foreground: 210 20% 96%;
+
+    --muted: 213 30% 18%;
+    --muted-foreground: 212 15% 60%;
+
+    --accent: 210 50% 25%;
+    --accent-foreground: 210 76% 70%;
+
+    --destructive: 0 62% 40%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 213 30% 22%;
+    --input: 213 30% 22%;
+    --ring: 210 76% 50%;
+
+    --sidebar-background: 213 40% 8%;
+    --sidebar-foreground: 210 20% 96%;
+    --sidebar-primary: 210 76% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 213 30% 15%;
+    --sidebar-accent-foreground: 210 20% 96%;
+    --sidebar-border: 213 30% 18%;
+    --sidebar-ring: 210 76% 50%;
+    --sidebar-muted: 213 25% 25%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
+
+@layer utilities {
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+  
+  .gradient-hero {
+    background: var(--gradient-hero);
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+#lovable-badge {
+display: none !important;
+}
