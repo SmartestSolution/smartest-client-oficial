@@ -274,8 +274,8 @@ export default function AdminUsers() {
                       <TableCell>
                         {u.role === 'admin' ? (
                           <span className="text-xs text-muted-foreground">—</span>
-                        ) : clientNameById(u.client_id) ? (
-                          <Badge variant="outline" className="text-xs">{clientNameById(u.client_id)}</Badge>
+                        ) : (u.client_name || clientNameById(u.client_id)) ? (
+                          <Badge variant="outline" className="text-xs">{u.client_name || clientNameById(u.client_id)}</Badge>
                         ) : (
                           <span className="text-xs text-destructive">Sem empresa</span>
                         )}
