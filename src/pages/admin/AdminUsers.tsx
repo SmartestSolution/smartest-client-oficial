@@ -28,6 +28,7 @@ type ManagedUser = {
   role: 'admin' | 'client';
   project_ids: string[];
   client_id: string | null;
+  client_name: string | null;
   created_at: string;
 };
 
