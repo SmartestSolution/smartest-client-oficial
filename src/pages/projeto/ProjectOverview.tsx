@@ -2,7 +2,8 @@ import { useParams, Link } from 'react-router-dom';
 import { useProject } from '@/hooks/useProjects';
 import { useDocuments } from '@/hooks/useDocuments';
 import { useVideos } from '@/hooks/useVideos';
-import { useProjectStages } from '@/hooks/useProjectStages';
+import { useProjectStages, ProjectStage } from '@/hooks/useProjectStages';
+import { useProjectStageItems } from '@/hooks/useProjectStageItems';
 import { useProjectMilestones } from '@/hooks/useProjectMilestones';
 import { useAllStageItems } from '@/hooks/useAllStageItems';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -29,6 +30,41 @@ function computeStatus(dueDate: string): string {
   if (isSameDay(date, today)) return 'in_progress';
   if (isPast(date)) return 'completed';
   return 'pending';
+}
+
+function MiniStageTimelineItem({
+  stage,
+  idx,
+  projectId,
+  currentStageId,
+}: {
+  stage: ProjectStage;
+  idx: number;
+  projectId?: string;
+  currentStageId?: string;
+}) {
+  const { data: items } = useProjectStageItems(stage.id);
+  const total = items?.length || 0;
+  const completed = items?.filter((i) => i.is_completed).length || 0;
+  const isDone = total > 0 && completed === total;
+  const isCurrent = !isDone && stage.id === currentStageId;
+  return (
+    <Link to={`/projeto/${projectId}/progresso`} className="group">
+      <div
+        className={`text-[10px] uppercase tracking-wider mb-1 truncate font-medium ${
+          isDone ? 'text-success' : isCurrent ? 'text-primary' : 'text-muted-foreground'
+        }`}
+      >
+        {idx + 1}. {stage.stage_name}
+        {total > 0 && ` (${completed}/${total})`}
+      </div>
+      <div
+        className={`h-1.5 rounded-full ${
+          isDone ? 'bg-success' : isCurrent ? 'bg-primary' : 'bg-muted'
+        } group-hover:opacity-80 transition`}
+      />
+    </Link>
+  );
 }
 
 export default function ProjectOverview() {
@@ -244,22 +280,15 @@ export default function ProjectOverview() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-5 gap-2">
-                {sortedStages.map((s, idx) => {
-                  const isDone = s.status === 'completed';
-                  const isCurrent = s.id === currentStage?.id && !isDone;
-                  return (
-                    <Link key={s.id} to={`/projeto/${id}/progresso`} className="group">
-                      <div className={`text-[10px] uppercase tracking-wider mb-1 truncate font-medium ${
-                        isDone ? 'text-success' : isCurrent ? 'text-primary' : 'text-muted-foreground'
-                      }`}>
-                        {idx + 1}. {s.stage_name}
-                      </div>
-                      <div className={`h-1.5 rounded-full ${
-                        isDone ? 'bg-success' : isCurrent ? 'bg-primary' : 'bg-muted'
-                      } group-hover:opacity-80 transition`} />
-                    </Link>
-                  );
-                })}
+                {sortedStages.map((s, idx) => (
+                  <MiniStageTimelineItem
+                    key={s.id}
+                    stage={s}
+                    idx={idx}
+                    projectId={id}
+                    currentStageId={currentStage?.id}
+                  />
+                ))}
               </div>
             </CardContent>
           </Card>

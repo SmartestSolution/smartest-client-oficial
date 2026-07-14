@@ -66,9 +66,28 @@ export default function AdminProjectStages() {
   const [editingNotes, setEditingNotes] = useState<Record<string, string>>({});
   const [editingDates, setEditingDates] = useState<Record<string, { started_at?: string; completed_at?: string }>>({});
 
+  const projectStart = project?.start_date || undefined;
+  const projectEnd = project?.end_date || undefined;
+
+  const isDateInRange = (value: string) => {
+    if (!value) return true;
+    if (projectStart && value < projectStart) return false;
+    if (projectEnd && value > projectEnd) return false;
+    return true;
+  };
+
   const handleSaveDates = (stage: ProjectStage) => {
     const dates = editingDates[stage.id];
     if (!dates) return;
+
+    if (dates.started_at && !isDateInRange(dates.started_at)) {
+      toast.error(`Data de início fora do período do projeto (${projectStart || '—'} a ${projectEnd || '—'}).`);
+      return;
+    }
+    if (dates.completed_at && !isDateInRange(dates.completed_at)) {
+      toast.error(`Data de término fora do período do projeto (${projectStart || '—'} a ${projectEnd || '—'}).`);
+      return;
+    }
 
     const updates: Partial<ProjectStage> = {};
     if (dates.started_at !== undefined) {
@@ -169,6 +188,11 @@ export default function AdminProjectStages() {
                 </CardTitle>
                 <CardDescription>
                   Configure datas de início/término para o Gantt. O status é calculado automaticamente pelo checklist.
+                  {(projectStart || projectEnd) && (
+                    <span className="block mt-1 text-xs">
+                      Período permitido: <strong>{projectStart || '—'}</strong> a <strong>{projectEnd || '—'}</strong>
+                    </span>
+                  )}
                 </CardDescription>
               </div>
               {stages && stages.length === 0 && (
@@ -196,6 +220,8 @@ export default function AdminProjectStages() {
                 handleSaveNotes={handleSaveNotes}
                 handleSaveDates={handleSaveDates}
                 updatePending={updateStage.isPending}
+                minDate={projectStart}
+                maxDate={projectEnd}
               />
             ) : (
               <div className="flex flex-col items-center justify-center py-12">
@@ -213,7 +239,7 @@ export default function AdminProjectStages() {
   );
 }
 
-function StagesTable({ stages, editingNotes, setEditingNotes, editingDates, getDateValue, setDateField, handleSaveNotes, handleSaveDates, updatePending }: any) {
+function StagesTable({ stages, editingNotes, setEditingNotes, editingDates, getDateValue, setDateField, handleSaveNotes, handleSaveDates, updatePending, minDate, maxDate }: any) {
   return (
     <Table>
       <TableHeader>
@@ -243,6 +269,8 @@ function StagesTable({ stages, editingNotes, setEditingNotes, editingDates, getD
               <Input
                 type="date"
                 className="h-8 text-sm"
+                min={minDate}
+                max={maxDate}
                 value={getDateValue(stage, 'started_at')}
                 onChange={(e) => setDateField(stage.id, 'started_at', e.target.value)}
               />
@@ -251,6 +279,8 @@ function StagesTable({ stages, editingNotes, setEditingNotes, editingDates, getD
               <Input
                 type="date"
                 className="h-8 text-sm"
+                min={minDate}
+                max={maxDate}
                 value={getDateValue(stage, 'completed_at')}
                 onChange={(e) => setDateField(stage.id, 'completed_at', e.target.value)}
               />
