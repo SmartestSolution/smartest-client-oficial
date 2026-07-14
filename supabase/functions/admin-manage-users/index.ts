@@ -59,8 +59,9 @@ Deno.serve(async (req) => {
 
 
     if (action === 'create') {
-      const { email, password, fullName, role, projectIds } = body
+      const { email, password, fullName, role, projectIds, clientId } = body
       if (!email || !password || !fullName || !role) return json({ error: 'Missing required fields' }, 400)
+      if (role === 'client' && !clientId) return json({ error: 'Empresa é obrigatória para usuários' }, 400)
 
       const { data: userData, error: createError } = await supabaseAdmin.auth.admin.createUser({
         email, password, email_confirm: true
@@ -71,16 +72,19 @@ Deno.serve(async (req) => {
       await supabaseAdmin.from('profiles').insert({ user_id: userId, full_name: fullName })
       await supabaseAdmin.from('user_roles').insert({ user_id: userId, role })
 
-      if (role === 'client' && Array.isArray(projectIds) && projectIds.length > 0) {
-        await supabaseAdmin.from('project_users').insert(
-          projectIds.map((pid: string) => ({ user_id: userId, project_id: pid }))
-        )
+      if (role === 'client') {
+        await supabaseAdmin.from('client_users').insert({ user_id: userId, client_id: clientId })
+        if (Array.isArray(projectIds) && projectIds.length > 0) {
+          await supabaseAdmin.from('project_users').insert(
+            projectIds.map((pid: string) => ({ user_id: userId, project_id: pid }))
+          )
+        }
       }
       return json({ success: true, userId })
     }
 
     if (action === 'update') {
-      const { userId, fullName, password, role, projectIds } = body
+      const { userId, fullName, password, role, projectIds, clientId } = body
       if (!userId) return json({ error: 'Missing userId' }, 400)
 
       if (fullName !== undefined) {
@@ -94,6 +98,14 @@ Deno.serve(async (req) => {
         await supabaseAdmin.from('user_roles').delete().eq('user_id', userId)
         await supabaseAdmin.from('user_roles').insert({ user_id: userId, role })
       }
+      if (role === 'admin') {
+        // Admins não pertencem a client_users
+        await supabaseAdmin.from('client_users').delete().eq('user_id', userId)
+      } else if (role === 'client') {
+        if (!clientId) return json({ error: 'Empresa é obrigatória para usuários' }, 400)
+        await supabaseAdmin.from('client_users').delete().eq('user_id', userId)
+        await supabaseAdmin.from('client_users').insert({ user_id: userId, client_id: clientId })
+      }
       if (Array.isArray(projectIds)) {
         await supabaseAdmin.from('project_users').delete().eq('user_id', userId)
         if (projectIds.length > 0) {
@@ -104,6 +116,7 @@ Deno.serve(async (req) => {
       }
       return json({ success: true })
     }
+
 
     if (action === 'delete') {
       const { userId } = body
