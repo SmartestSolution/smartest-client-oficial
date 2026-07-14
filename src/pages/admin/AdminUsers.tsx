@@ -28,6 +28,7 @@ type ManagedUser = {
   role: 'admin' | 'client';
   project_ids: string[];
   client_id: string | null;
+  client_name: string | null;
   created_at: string;
 };
 
@@ -52,7 +53,7 @@ export default function AdminUsers() {
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [projectPopoverOpen, setProjectPopoverOpen] = useState(false);
 
-  const { data: users, isLoading } = useQuery({
+  const { data: usersResp, isLoading } = useQuery({
     queryKey: ['admin-users'],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('admin-manage-users', {
@@ -60,18 +61,12 @@ export default function AdminUsers() {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      return data.users as ManagedUser[];
+      return data as { users: ManagedUser[]; clients: Array<{ id: string; name: string }> };
     },
   });
 
-  const { data: clients } = useQuery({
-    queryKey: ['admin-users-clients'],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('clients').select('id, name').order('name');
-      if (error) throw error;
-      return data as Array<{ id: string; name: string }>;
-    },
-  });
+  const users = usersResp?.users;
+  const clients = usersResp?.clients;
 
   const { data: projects } = useQuery({
     queryKey: ['admin-users-projects'],
@@ -279,8 +274,8 @@ export default function AdminUsers() {
                       <TableCell>
                         {u.role === 'admin' ? (
                           <span className="text-xs text-muted-foreground">—</span>
-                        ) : clientNameById(u.client_id) ? (
-                          <Badge variant="outline" className="text-xs">{clientNameById(u.client_id)}</Badge>
+                        ) : (u.client_name || clientNameById(u.client_id)) ? (
+                          <Badge variant="outline" className="text-xs">{u.client_name || clientNameById(u.client_id)}</Badge>
                         ) : (
                           <span className="text-xs text-destructive">Sem empresa</span>
                         )}

@@ -37,24 +37,32 @@ Deno.serve(async (req) => {
       if (listErr) return json({ error: listErr.message }, 400)
 
       const userIds = usersData.users.map(u => u.id)
-      const [{ data: profiles }, { data: roles }, { data: projectUsers }, { data: clientUsers }] = await Promise.all([
+      const [{ data: profiles }, { data: roles }, { data: projectUsers }, { data: clientUsers }, { data: allClients }] = await Promise.all([
         supabaseAdmin.from('profiles').select('user_id, full_name, company').in('user_id', userIds),
         supabaseAdmin.from('user_roles').select('user_id, role').in('user_id', userIds),
         supabaseAdmin.from('project_users').select('user_id, project_id').in('user_id', userIds),
         supabaseAdmin.from('client_users').select('user_id, client_id').in('user_id', userIds),
+        supabaseAdmin.from('clients').select('id, name'),
       ])
 
-      const users = usersData.users.map(u => ({
-        id: u.id,
-        email: u.email,
-        created_at: u.created_at,
-        full_name: profiles?.find(p => p.user_id === u.id)?.full_name || '',
-        company: profiles?.find(p => p.user_id === u.id)?.company || null,
-        role: roles?.find(r => r.user_id === u.id)?.role || 'client',
-        project_ids: projectUsers?.filter(pu => pu.user_id === u.id).map(pu => pu.project_id) || [],
-        client_id: clientUsers?.find(cu => cu.user_id === u.id)?.client_id || null,
-      }))
-      return json({ users })
+      const clientNameById = (id: string | null) =>
+        id ? (allClients?.find(c => c.id === id)?.name || null) : null
+
+      const users = usersData.users.map(u => {
+        const clientId = clientUsers?.find(cu => cu.user_id === u.id)?.client_id || null
+        return {
+          id: u.id,
+          email: u.email,
+          created_at: u.created_at,
+          full_name: profiles?.find(p => p.user_id === u.id)?.full_name || '',
+          company: profiles?.find(p => p.user_id === u.id)?.company || null,
+          role: roles?.find(r => r.user_id === u.id)?.role || 'client',
+          project_ids: projectUsers?.filter(pu => pu.user_id === u.id).map(pu => pu.project_id) || [],
+          client_id: clientId,
+          client_name: clientNameById(clientId),
+        }
+      })
+      return json({ users, clients: allClients || [] })
     }
 
 
