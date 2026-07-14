@@ -66,9 +66,28 @@ export default function AdminProjectStages() {
   const [editingNotes, setEditingNotes] = useState<Record<string, string>>({});
   const [editingDates, setEditingDates] = useState<Record<string, { started_at?: string; completed_at?: string }>>({});
 
+  const projectStart = project?.start_date || undefined;
+  const projectEnd = project?.end_date || undefined;
+
+  const isDateInRange = (value: string) => {
+    if (!value) return true;
+    if (projectStart && value < projectStart) return false;
+    if (projectEnd && value > projectEnd) return false;
+    return true;
+  };
+
   const handleSaveDates = (stage: ProjectStage) => {
     const dates = editingDates[stage.id];
     if (!dates) return;
+
+    if (dates.started_at && !isDateInRange(dates.started_at)) {
+      toast.error(`Data de início fora do período do projeto (${projectStart || '—'} a ${projectEnd || '—'}).`);
+      return;
+    }
+    if (dates.completed_at && !isDateInRange(dates.completed_at)) {
+      toast.error(`Data de término fora do período do projeto (${projectStart || '—'} a ${projectEnd || '—'}).`);
+      return;
+    }
 
     const updates: Partial<ProjectStage> = {};
     if (dates.started_at !== undefined) {
