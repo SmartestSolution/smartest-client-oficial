@@ -239,7 +239,7 @@ export default function AdminProjectStages() {
   );
 }
 
-function StagesTable({ stages, editingNotes, setEditingNotes, editingDates, getDateValue, setDateField, handleSaveNotes, handleSaveDates, updatePending }: any) {
+function StagesTable({ stages, editingNotes, setEditingNotes, editingDates, getDateValue, setDateField, handleSaveNotes, handleSaveDates, updatePending, minDate, maxDate }: any) {
   return (
     <Table>
       <TableHeader>
