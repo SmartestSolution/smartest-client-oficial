@@ -269,6 +269,8 @@ function StagesTable({ stages, editingNotes, setEditingNotes, editingDates, getD
               <Input
                 type="date"
                 className="h-8 text-sm"
+                min={minDate}
+                max={maxDate}
                 value={getDateValue(stage, 'started_at')}
                 onChange={(e) => setDateField(stage.id, 'started_at', e.target.value)}
               />
@@ -277,6 +279,8 @@ function StagesTable({ stages, editingNotes, setEditingNotes, editingDates, getD
               <Input
                 type="date"
                 className="h-8 text-sm"
+                min={minDate}
+                max={maxDate}
                 value={getDateValue(stage, 'completed_at')}
                 onChange={(e) => setDateField(stage.id, 'completed_at', e.target.value)}
               />
