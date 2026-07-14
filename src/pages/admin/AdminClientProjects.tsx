@@ -320,14 +320,52 @@ export default function AdminClientProjects() {
                       </Select>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="start_date">Data de Início</Label>
                       <Input
                         id="start_date"
                         type="date"
                         value={formData.start_date}
-                        onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                        onChange={(e) => {
+                          const newStart = e.target.value;
+                          // If we have a duration currently, recompute end_date
+                          let newEnd = formData.end_date;
+                          if (newStart && formData.end_date && !formData.end_date_indeterminate) {
+                            // keep existing end
+                          } else if (newStart && !formData.end_date_indeterminate && formData.end_date === '') {
+                            newEnd = '';
+                          }
+                          setFormData({ ...formData, start_date: newStart, end_date: newEnd });
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="duration_days">Duração (dias)</Label>
+                      <Input
+                        id="duration_days"
+                        type="number"
+                        min={1}
+                        placeholder="Ex: 30"
+                        disabled={formData.end_date_indeterminate || !formData.start_date}
+                        value={(() => {
+                          if (!formData.start_date || !formData.end_date) return '';
+                          const s = new Date(formData.start_date + 'T00:00:00');
+                          const e = new Date(formData.end_date + 'T00:00:00');
+                          const diff = Math.round((e.getTime() - s.getTime()) / 86400000) + 1;
+                          return diff > 0 ? String(diff) : '';
+                        })()}
+                        onChange={(e) => {
+                          const days = parseInt(e.target.value, 10);
+                          if (!formData.start_date || !days || days < 1) {
+                            setFormData({ ...formData, end_date: '' });
+                            return;
+                          }
+                          const s = new Date(formData.start_date + 'T00:00:00');
+                          s.setDate(s.getDate() + days - 1);
+                          const iso = s.toISOString().slice(0, 10);
+                          setFormData({ ...formData, end_date: iso });
+                        }}
                       />
                     </div>
                     <div className="space-y-2">
@@ -337,6 +375,7 @@ export default function AdminClientProjects() {
                       <Input
                         id="end_date"
                         type="date"
+                        min={formData.start_date || undefined}
                         value={formData.end_date}
                         disabled={formData.end_date_indeterminate}
                         onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
@@ -354,7 +393,7 @@ export default function AdminClientProjects() {
                           }
                         />
                         <Label htmlFor="end_date_indeterminate" className="text-xs font-normal cursor-pointer">
-                          Prazo indeterminado
+                          Indeterminado
                         </Label>
                       </div>
                     </div>
