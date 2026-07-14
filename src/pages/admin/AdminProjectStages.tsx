@@ -188,6 +188,11 @@ export default function AdminProjectStages() {
                 </CardTitle>
                 <CardDescription>
                   Configure datas de início/término para o Gantt. O status é calculado automaticamente pelo checklist.
+                  {(projectStart || projectEnd) && (
+                    <span className="block mt-1 text-xs">
+                      Período permitido: <strong>{projectStart || '—'}</strong> a <strong>{projectEnd || '—'}</strong>
+                    </span>
+                  )}
                 </CardDescription>
               </div>
               {stages && stages.length === 0 && (
