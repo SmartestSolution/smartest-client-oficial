@@ -3,7 +3,7 @@ import { useProject } from '@/hooks/useProjects';
 import { useDocuments } from '@/hooks/useDocuments';
 import { useVideos } from '@/hooks/useVideos';
 import { useProjectStages, ProjectStage } from '@/hooks/useProjectStages';
-import { useProjectStageItems } from '@/hooks/useProjectStageItems';
+
 import { useProjectMilestones } from '@/hooks/useProjectMilestones';
 import { useAllStageItems } from '@/hooks/useAllStageItems';
 import { AppLayout } from '@/components/layout/AppLayout';
