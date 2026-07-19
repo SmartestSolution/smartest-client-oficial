@@ -109,19 +109,23 @@ Deno.serve(async (req) => {
         await supabaseAdmin.from('user_roles').insert({ user_id: userId, role })
       }
       if (role === 'admin') {
-        // Admins não pertencem a client_users
         await supabaseAdmin.from('client_users').delete().eq('user_id', userId)
+        await supabaseAdmin.from('project_users').delete().eq('user_id', userId)
       } else if (role === 'client') {
         if (!clientId) return json({ error: 'Empresa é obrigatória para usuários' }, 400)
         await supabaseAdmin.from('client_users').delete().eq('user_id', userId)
-        await supabaseAdmin.from('client_users').insert({ user_id: userId, client_id: clientId })
+        const { error: cuErr } = await supabaseAdmin
+          .from('client_users')
+          .insert({ user_id: userId, client_id: clientId })
+        if (cuErr) return json({ error: 'Falha ao vincular empresa: ' + cuErr.message }, 400)
       }
-      if (Array.isArray(projectIds)) {
+      if (Array.isArray(projectIds) && role !== 'admin') {
         await supabaseAdmin.from('project_users').delete().eq('user_id', userId)
         if (projectIds.length > 0) {
-          await supabaseAdmin.from('project_users').insert(
+          const { error: puErr } = await supabaseAdmin.from('project_users').insert(
             projectIds.map((pid: string) => ({ user_id: userId, project_id: pid }))
           )
+          if (puErr) return json({ error: 'Falha ao vincular projetos: ' + puErr.message }, 400)
         }
       }
       return json({ success: true })
