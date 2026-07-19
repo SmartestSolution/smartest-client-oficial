@@ -3,7 +3,7 @@ import { useProject } from '@/hooks/useProjects';
 import { useDocuments } from '@/hooks/useDocuments';
 import { useVideos } from '@/hooks/useVideos';
 import { useProjectStages, ProjectStage } from '@/hooks/useProjectStages';
-import { useProjectStageItems } from '@/hooks/useProjectStageItems';
+
 import { useProjectMilestones } from '@/hooks/useProjectMilestones';
 import { useAllStageItems } from '@/hooks/useAllStageItems';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -36,18 +36,19 @@ function MiniStageTimelineItem({
   stage,
   idx,
   projectId,
-  currentStageId,
+  isDone,
+  isCurrent,
+  total,
+  completed,
 }: {
   stage: ProjectStage;
   idx: number;
   projectId?: string;
-  currentStageId?: string;
+  isDone: boolean;
+  isCurrent: boolean;
+  total: number;
+  completed: number;
 }) {
-  const { data: items } = useProjectStageItems(stage.id);
-  const total = items?.length || 0;
-  const completed = items?.filter((i) => i.is_completed).length || 0;
-  const isDone = total > 0 && completed === total;
-  const isCurrent = !isDone && stage.id === currentStageId;
   return (
     <Link to={`/projeto/${projectId}/progresso`} className="group">
       <div
@@ -132,10 +133,21 @@ export default function ProjectOverview() {
     ? Math.round((allItems.completedItems / allItems.totalItems) * 100) 
     : 0;
 
-  // Determine current/active stage: first stage that's not completed
+  // Derive stage completion from checklist items (source of truth), not stage.status
   const sortedStages = [...(stages || [])].sort((a, b) => a.order_index - b.order_index);
-  const currentStage = sortedStages.find(s => s.status !== 'completed') || sortedStages[sortedStages.length - 1];
-  const completedStagesCount = sortedStages.filter(s => s.status === 'completed').length;
+  const byStage = allItems?.byStage || {};
+  const isStageDone = (stageId: string) => {
+    const s = byStage[stageId];
+    return !!s && s.total > 0 && s.completed === s.total;
+  };
+  const isStageStarted = (stageId: string) => {
+    const s = byStage[stageId];
+    return !!s && s.completed > 0;
+  };
+  const currentStage =
+    sortedStages.find((s) => !isStageDone(s.id)) || sortedStages[sortedStages.length - 1];
+  const completedStagesCount = sortedStages.filter((s) => isStageDone(s.id)).length;
+  const allStagesDone = sortedStages.length > 0 && completedStagesCount === sortedStages.length;
 
   const today = new Date();
   const startDate = project.start_date ? new Date(project.start_date + 'T00:00:00') : null;
@@ -148,11 +160,11 @@ export default function ProjectOverview() {
     : null;
 
   const statusBadge = (() => {
-    if (completedStagesCount === sortedStages.length && sortedStages.length > 0) 
+    if (allStagesDone)
       return { label: 'Concluído', cls: 'bg-success/10 text-success border-success/30' };
-    if (daysRemaining !== null && daysRemaining < 0) 
+    if (daysRemaining !== null && daysRemaining < 0)
       return { label: 'Atrasado', cls: 'bg-destructive/10 text-destructive border-destructive/30' };
-    if (currentStage?.status === 'in_progress' || sortedStages.some(s => s.status === 'in_progress')) 
+    if (sortedStages.some((s) => isStageStarted(s.id) && !isStageDone(s.id)) || completedStagesCount > 0)
       return { label: 'Em Andamento', cls: 'bg-warning/10 text-warning border-warning/30' };
     return { label: 'Pendente', cls: 'bg-muted text-muted-foreground border-border' };
   })();
@@ -280,15 +292,22 @@ export default function ProjectOverview() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-5 gap-2">
-                {sortedStages.map((s, idx) => (
-                  <MiniStageTimelineItem
-                    key={s.id}
-                    stage={s}
-                    idx={idx}
-                    projectId={id}
-                    currentStageId={currentStage?.id}
-                  />
-                ))}
+                {sortedStages.map((s, idx) => {
+                  const counts = byStage[s.id] || { total: 0, completed: 0 };
+                  const done = isStageDone(s.id);
+                  return (
+                    <MiniStageTimelineItem
+                      key={s.id}
+                      stage={s}
+                      idx={idx}
+                      projectId={id}
+                      isDone={done}
+                      isCurrent={!done && s.id === currentStage?.id}
+                      total={counts.total}
+                      completed={counts.completed}
+                    />
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
