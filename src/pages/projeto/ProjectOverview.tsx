@@ -36,18 +36,19 @@ function MiniStageTimelineItem({
   stage,
   idx,
   projectId,
-  currentStageId,
+  isDone,
+  isCurrent,
+  total,
+  completed,
 }: {
   stage: ProjectStage;
   idx: number;
   projectId?: string;
-  currentStageId?: string;
+  isDone: boolean;
+  isCurrent: boolean;
+  total: number;
+  completed: number;
 }) {
-  const { data: items } = useProjectStageItems(stage.id);
-  const total = items?.length || 0;
-  const completed = items?.filter((i) => i.is_completed).length || 0;
-  const isDone = total > 0 && completed === total;
-  const isCurrent = !isDone && stage.id === currentStageId;
   return (
     <Link to={`/projeto/${projectId}/progresso`} className="group">
       <div
