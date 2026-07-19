@@ -292,15 +292,22 @@ export default function ProjectOverview() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-5 gap-2">
-                {sortedStages.map((s, idx) => (
-                  <MiniStageTimelineItem
-                    key={s.id}
-                    stage={s}
-                    idx={idx}
-                    projectId={id}
-                    currentStageId={currentStage?.id}
-                  />
-                ))}
+                {sortedStages.map((s, idx) => {
+                  const counts = byStage[s.id] || { total: 0, completed: 0 };
+                  const done = isStageDone(s.id);
+                  return (
+                    <MiniStageTimelineItem
+                      key={s.id}
+                      stage={s}
+                      idx={idx}
+                      projectId={id}
+                      isDone={done}
+                      isCurrent={!done && s.id === currentStage?.id}
+                      total={counts.total}
+                      completed={counts.completed}
+                    />
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
