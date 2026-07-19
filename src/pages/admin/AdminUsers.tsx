@@ -112,7 +112,7 @@ export default function AdminUsers() {
         fullName: form.fullName,
         role: form.role,
         clientId: form.role === 'client' ? form.clientId : undefined,
-        projectIds: [],
+        projectIds: form.role === 'client' ? form.projectIds : [],
       };
       if (editingUser) {
         const { data, error } = await supabase.functions.invoke('admin-manage-users', {
@@ -365,10 +365,51 @@ export default function AdminUsers() {
                           ))}
                         </SelectContent>
                       </Select>
-                      <p className="text-xs text-muted-foreground">
-                        O usuário terá acesso automaticamente a todos os projetos desta empresa.
-                      </p>
                     </div>
+
+                    {form.clientId && (
+                      <div className="space-y-2">
+                        <Label>Restringir a projetos específicos (opcional)</Label>
+                        <Popover open={projectPopoverOpen} onOpenChange={setProjectPopoverOpen}>
+                          <PopoverTrigger asChild>
+                            <Button type="button" variant="outline" className="w-full justify-between">
+                              {form.projectIds.length === 0
+                                ? 'Todos os projetos da empresa'
+                                : `${form.projectIds.length} projeto(s) selecionado(s)`}
+                              <Check className="ml-2 h-4 w-4 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[400px] p-0" align="start">
+                            <Command>
+                              <CommandInput placeholder="Buscar projeto..." />
+                              <CommandList>
+                                <CommandEmpty>Nenhum projeto encontrado.</CommandEmpty>
+                                <CommandGroup>
+                                  {formProjects.map(p => (
+                                    <CommandItem key={p.id} onSelect={() => toggleProject(p.id)}>
+                                      <Check className={cn('mr-2 h-4 w-4', form.projectIds.includes(p.id) ? 'opacity-100' : 'opacity-0')} />
+                                      {p.name}
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                        {form.projectIds.length > 0 && (
+                          <div className="flex flex-wrap gap-1 pt-1">
+                            {form.projectIds.map(id => (
+                              <Badge key={id} variant="secondary" className="text-xs">
+                                {projectNameById(id)}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                          Deixe vazio para dar acesso a todos os projetos da empresa. Se selecionar projetos, o usuário só verá esses.
+                        </p>
+                      </div>
+                    )}
                   </>
                 )}
               </div>
