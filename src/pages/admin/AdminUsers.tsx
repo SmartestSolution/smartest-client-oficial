@@ -112,7 +112,7 @@ export default function AdminUsers() {
         fullName: form.fullName,
         role: form.role,
         clientId: form.role === 'client' ? form.clientId : undefined,
-        projectIds: [],
+        projectIds: form.role === 'client' ? form.projectIds : [],
       };
       if (editingUser) {
         const { data, error } = await supabase.functions.invoke('admin-manage-users', {
