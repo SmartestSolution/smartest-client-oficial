@@ -133,10 +133,21 @@ export default function ProjectOverview() {
     ? Math.round((allItems.completedItems / allItems.totalItems) * 100) 
     : 0;
 
-  // Determine current/active stage: first stage that's not completed
+  // Derive stage completion from checklist items (source of truth), not stage.status
   const sortedStages = [...(stages || [])].sort((a, b) => a.order_index - b.order_index);
-  const currentStage = sortedStages.find(s => s.status !== 'completed') || sortedStages[sortedStages.length - 1];
-  const completedStagesCount = sortedStages.filter(s => s.status === 'completed').length;
+  const byStage = allItems?.byStage || {};
+  const isStageDone = (stageId: string) => {
+    const s = byStage[stageId];
+    return !!s && s.total > 0 && s.completed === s.total;
+  };
+  const isStageStarted = (stageId: string) => {
+    const s = byStage[stageId];
+    return !!s && s.completed > 0;
+  };
+  const currentStage =
+    sortedStages.find((s) => !isStageDone(s.id)) || sortedStages[sortedStages.length - 1];
+  const completedStagesCount = sortedStages.filter((s) => isStageDone(s.id)).length;
+  const allStagesDone = sortedStages.length > 0 && completedStagesCount === sortedStages.length;
 
   const today = new Date();
   const startDate = project.start_date ? new Date(project.start_date + 'T00:00:00') : null;
@@ -149,11 +160,11 @@ export default function ProjectOverview() {
     : null;
 
   const statusBadge = (() => {
-    if (completedStagesCount === sortedStages.length && sortedStages.length > 0) 
+    if (allStagesDone)
       return { label: 'Concluído', cls: 'bg-success/10 text-success border-success/30' };
-    if (daysRemaining !== null && daysRemaining < 0) 
+    if (daysRemaining !== null && daysRemaining < 0)
       return { label: 'Atrasado', cls: 'bg-destructive/10 text-destructive border-destructive/30' };
-    if (currentStage?.status === 'in_progress' || sortedStages.some(s => s.status === 'in_progress')) 
+    if (sortedStages.some((s) => isStageStarted(s.id) && !isStageDone(s.id)) || completedStagesCount > 0)
       return { label: 'Em Andamento', cls: 'bg-warning/10 text-warning border-warning/30' };
     return { label: 'Pendente', cls: 'bg-muted text-muted-foreground border-border' };
   })();
