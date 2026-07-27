@@ -31,6 +31,7 @@ type ManagedUser = {
   created_at: string;
 };
 
+
 type FormState = {
   fullName: string;
   email: string;
@@ -279,12 +280,13 @@ export default function AdminUsers() {
                       <TableCell>
                         {u.role === 'admin' ? (
                           <span className="text-xs text-muted-foreground">—</span>
-                        ) : clientNameById(u.client_id) ? (
-                          <Badge variant="outline" className="text-xs">{clientNameById(u.client_id)}</Badge>
+                        ) : u.company ? (
+                          <Badge variant="outline" className="text-xs">{u.company}</Badge>
                         ) : (
                           <span className="text-xs text-destructive">Sem empresa</span>
                         )}
                       </TableCell>
+
                       <TableCell className="text-right">
                         <Button variant="ghost" size="icon" onClick={() => handleEdit(u)}>
                           <Pencil className="h-4 w-4" />
