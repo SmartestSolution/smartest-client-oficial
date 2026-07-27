@@ -68,13 +68,21 @@ Deno.serve(async (req) => {
       if (!email || !password || !fullName || !role) return json({ error: 'Missing required fields' }, 400)
       if (role === 'client' && !clientId) return json({ error: 'Empresa é obrigatória para usuários' }, 400)
 
+      // Buscar o nome da empresa para preencher profiles.company
+      let companyName: string | null = null
+      if (role === 'client' && clientId) {
+        const { data: clientData } = await supabaseAdmin
+          .from('clients').select('name').eq('id', clientId).maybeSingle()
+        companyName = clientData?.name ?? null
+      }
+
       const { data: userData, error: createError } = await supabaseAdmin.auth.admin.createUser({
         email, password, email_confirm: true
       })
       if (createError) return json({ error: createError.message }, 400)
       const userId = userData.user.id
 
-      await supabaseAdmin.from('profiles').insert({ user_id: userId, full_name: fullName })
+      await supabaseAdmin.from('profiles').insert({ user_id: userId, full_name: fullName, company: companyName })
       await supabaseAdmin.from('user_roles').insert({ user_id: userId, role })
 
       if (role === 'client') {
@@ -93,12 +101,26 @@ Deno.serve(async (req) => {
       return json({ success: true, userId })
     }
 
+
     if (action === 'update') {
       const { userId, fullName, password, role, projectIds, clientId } = body
       if (!userId) return json({ error: 'Missing userId' }, 400)
 
-      if (fullName !== undefined) {
-        await supabaseAdmin.from('profiles').update({ full_name: fullName }).eq('user_id', userId)
+      // Determinar nome da empresa se aplicável
+      let companyName: string | null | undefined = undefined
+      if (role === 'admin') {
+        companyName = null
+      } else if (role === 'client' && clientId) {
+        const { data: clientData } = await supabaseAdmin
+          .from('clients').select('name').eq('id', clientId).maybeSingle()
+        companyName = clientData?.name ?? null
+      }
+
+      const profileUpdate: Record<string, unknown> = {}
+      if (fullName !== undefined) profileUpdate.full_name = fullName
+      if (companyName !== undefined) profileUpdate.company = companyName
+      if (Object.keys(profileUpdate).length > 0) {
+        await supabaseAdmin.from('profiles').update(profileUpdate).eq('user_id', userId)
       }
       if (password) {
         const { error: pwErr } = await supabaseAdmin.auth.admin.updateUserById(userId, { password })
@@ -119,17 +141,7 @@ Deno.serve(async (req) => {
           .insert({ user_id: userId, client_id: clientId })
         if (cuErr) return json({ error: 'Falha ao vincular empresa: ' + cuErr.message }, 400)
       }
-      if (Array.isArray(projectIds) && role !== 'admin') {
-        await supabaseAdmin.from('project_users').delete().eq('user_id', userId)
-        if (projectIds.length > 0) {
-          const { error: puErr } = await supabaseAdmin.from('project_users').insert(
-            projectIds.map((pid: string) => ({ user_id: userId, project_id: pid }))
-          )
-          if (puErr) return json({ error: 'Falha ao vincular projetos: ' + puErr.message }, 400)
-        }
-      }
-      return json({ success: true })
-    }
+
 
 
     if (action === 'delete') {
