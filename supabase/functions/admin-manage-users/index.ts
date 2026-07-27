@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
     const { action } = body
 
     if (action === 'list') {
-      // v2 - retorna client_id + project_ids (força redeploy)
+      // v3 - retorna client_id + project_ids (força redeploy)
       const { data: usersData, error: listErr } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 })
       if (listErr) return json({ error: listErr.message }, 400)
 
