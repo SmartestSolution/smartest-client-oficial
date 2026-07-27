@@ -68,13 +68,21 @@ Deno.serve(async (req) => {
       if (!email || !password || !fullName || !role) return json({ error: 'Missing required fields' }, 400)
       if (role === 'client' && !clientId) return json({ error: 'Empresa é obrigatória para usuários' }, 400)
 
+      // Buscar o nome da empresa para preencher profiles.company
+      let companyName: string | null = null
+      if (role === 'client' && clientId) {
+        const { data: clientData } = await supabaseAdmin
+          .from('clients').select('name').eq('id', clientId).maybeSingle()
+        companyName = clientData?.name ?? null
+      }
+
       const { data: userData, error: createError } = await supabaseAdmin.auth.admin.createUser({
         email, password, email_confirm: true
       })
       if (createError) return json({ error: createError.message }, 400)
       const userId = userData.user.id
 
-      await supabaseAdmin.from('profiles').insert({ user_id: userId, full_name: fullName })
+      await supabaseAdmin.from('profiles').insert({ user_id: userId, full_name: fullName, company: companyName })
       await supabaseAdmin.from('user_roles').insert({ user_id: userId, role })
 
       if (role === 'client') {
@@ -92,6 +100,7 @@ Deno.serve(async (req) => {
       }
       return json({ success: true, userId })
     }
+
 
     if (action === 'update') {
       const { userId, fullName, password, role, projectIds, clientId } = body
