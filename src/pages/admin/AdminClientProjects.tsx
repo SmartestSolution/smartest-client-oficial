@@ -115,7 +115,7 @@ export default function AdminClientProjects() {
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const { error } = await supabase
+      const { data: created, error } = await supabase
         .from('projects')
         .insert({
           client_id: clientId,
@@ -125,14 +125,52 @@ export default function AdminClientProjects() {
           project_type: data.project_type,
           start_date: data.start_date || null,
           end_date: data.end_date || null,
-        } as any);
+        } as any)
+        .select('id')
+        .single();
       
       if (error) throw error;
+
+      // Aplica o projeto padrão (etapas + tarefas)
+      const projectId = (created as any)?.id;
+      if (projectId) {
+        const { data: stages, error: stagesError } = await (supabase as any)
+          .from('project_stages')
+          .insert(
+            DEFAULT_PROJECT_TEMPLATE.map((s, index) => ({
+              project_id: projectId,
+              stage_name: s.stage,
+              order_index: index,
+              status: 'pending',
+            }))
+          )
+          .select('id, stage_name');
+        if (stagesError) throw stagesError;
+
+        const items = DEFAULT_PROJECT_TEMPLATE.flatMap((s) => {
+          const row = (stages as any[])?.find((c) => c.stage_name === s.stage);
+          if (!row) return [];
+          return s.items.map((title, idx) => ({
+            stage_id: row.id,
+            title,
+            order_index: idx,
+            item_type: 'task',
+            priority: 'medium',
+          }));
+        });
+        if (items.length > 0) {
+          const { error: itemsError } = await (supabase as any)
+            .from('project_stage_items')
+            .insert(items);
+          if (itemsError) throw itemsError;
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-projects', clientId] });
       queryClient.invalidateQueries({ queryKey: ['projects'] });
-      toast.success('Projeto criado com sucesso!');
+      queryClient.invalidateQueries({ queryKey: ['project-stages'] });
+      toast.success('Projeto criado com as etapas padrão!');
       handleClose();
     },
     onError: (error: Error) => {
