@@ -51,34 +51,84 @@ export function useUpdateProjectStage() {
   });
 }
 
+export const DEFAULT_PROJECT_TEMPLATE: { stage: string; items: string[] }[] = [
+  {
+    stage: 'Levantamento',
+    items: ['Entendimento de Negócio', 'Levantamento de Requisitos', 'Levantamentos Adicionais'],
+  },
+  {
+    stage: 'Modelagem',
+    items: ['Fontes de Dados', 'Tipagem de Dados', 'Esquema'],
+  },
+  {
+    stage: 'Desenvolvimento',
+    items: [
+      'Prototipação',
+      'Relacionamentos',
+      'Medidas',
+      "Background's",
+      'Visuais',
+      'ETL - Completa',
+      "KPI's e Métricas",
+    ],
+  },
+  {
+    stage: 'Homologação',
+    items: ['Validação de Dados', 'Validação do Aplicativo'],
+  },
+  {
+    stage: 'Produção',
+    items: [
+      'Postagem no Service',
+      'Configuração de Gateway',
+      'Agendamento de Atualização',
+      'Permissões de Aplicativo',
+    ],
+  },
+];
+
 export function useCreateDefaultStages() {
   const queryClient = useQueryClient();
 
-  const defaultStages = [
-    'Levantamento',
-    'Modelagem', 
-    'Desenvolvimento',
-    'Homologação',
-    'Produção',
-  ];
-
   return useMutation({
     mutationFn: async (projectId: string) => {
-      const stages = defaultStages.map((name, index) => ({
+      const stages = DEFAULT_PROJECT_TEMPLATE.map((s, index) => ({
         project_id: projectId,
-        stage_name: name,
+        stage_name: s.stage,
         order_index: index,
         status: 'pending',
       }));
 
-      const { error } = await (supabase as any)
+      const { data: created, error } = await (supabase as any)
         .from('project_stages')
-        .insert(stages);
+        .insert(stages)
+        .select('id, stage_name');
 
       if (error) throw error;
+
+      const items = DEFAULT_PROJECT_TEMPLATE.flatMap((s) => {
+        const stageRow = (created as any[])?.find((c) => c.stage_name === s.stage);
+        if (!stageRow) return [];
+        return s.items.map((title, idx) => ({
+          stage_id: stageRow.id,
+          title,
+          order_index: idx,
+          item_type: 'task',
+          priority: 'medium',
+        }));
+      });
+
+      if (items.length > 0) {
+        const { error: itemsError } = await (supabase as any)
+          .from('project_stage_items')
+          .insert(items);
+        if (itemsError) throw itemsError;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project-stages'] });
+      queryClient.invalidateQueries({ queryKey: ['project-stage-items'] });
+      queryClient.invalidateQueries({ queryKey: ['all-stage-items'] });
     },
   });
 }
