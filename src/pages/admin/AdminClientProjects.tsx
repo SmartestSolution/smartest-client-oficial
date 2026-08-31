@@ -229,6 +229,8 @@ export default function AdminClientProjects() {
 
   const handleClose = () => {
     setIsOpen(false);
+    setIsTemplateOpen(false);
+    setTemplateData({ name: '', start_date: '', end_date: '' });
     setEditingProject(null);
     setFormData({ name: '', description: '', status: 'active', project_type: 'bi', start_date: '', end_date: '', end_date_indeterminate: false });
   };
