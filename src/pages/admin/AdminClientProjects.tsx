@@ -73,6 +73,8 @@ export default function AdminClientProjects() {
   const { clientId } = useParams<{ clientId: string }>();
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
+  const [isTemplateOpen, setIsTemplateOpen] = useState(false);
+  const [templateData, setTemplateData] = useState({ name: '', start_date: '', end_date: '' });
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -227,6 +229,8 @@ export default function AdminClientProjects() {
 
   const handleClose = () => {
     setIsOpen(false);
+    setIsTemplateOpen(false);
+    setTemplateData({ name: '', start_date: '', end_date: '' });
     setEditingProject(null);
     setFormData({ name: '', description: '', status: 'active', project_type: 'bi', start_date: '', end_date: '', end_date_indeterminate: false });
   };
@@ -277,6 +281,86 @@ export default function AdminClientProjects() {
             </div>
             <h1 className="text-2xl font-bold text-foreground">Projetos</h1>
           </div>
+          <Dialog open={isTemplateOpen} onOpenChange={(o) => { setIsTemplateOpen(o); if (!o) setTemplateData({ name: '', start_date: '', end_date: '' }); }}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <Plus className="h-4 w-4 mr-2" />
+                Projeto Padrão
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Novo Projeto Padrão</DialogTitle>
+                <DialogDescription>
+                  Cria o projeto já com todas as etapas e tarefas padrão preenchidas.
+                </DialogDescription>
+              </DialogHeader>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!templateData.name.trim()) {
+                    toast.error('Nome do projeto é obrigatório');
+                    return;
+                  }
+                  createMutation.mutate({
+                    name: templateData.name,
+                    description: '',
+                    status: 'active',
+                    project_type: 'bi',
+                    start_date: templateData.start_date,
+                    end_date: templateData.end_date,
+                    end_date_indeterminate: false,
+                  });
+                }}
+              >
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="tpl-name">Nome do Projeto *</Label>
+                    <Input
+                      id="tpl-name"
+                      value={templateData.name}
+                      onChange={(e) => setTemplateData({ ...templateData, name: e.target.value })}
+                      placeholder="Ex: Dashboard Comercial"
+                      required
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="tpl-start">Data de Início</Label>
+                      <Input
+                        id="tpl-start"
+                        type="date"
+                        value={templateData.start_date}
+                        onChange={(e) => setTemplateData({ ...templateData, start_date: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="tpl-end">Data de Término</Label>
+                      <Input
+                        id="tpl-end"
+                        type="date"
+                        min={templateData.start_date || undefined}
+                        value={templateData.end_date}
+                        onChange={(e) => setTemplateData({ ...templateData, end_date: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Etapas incluídas: {DEFAULT_PROJECT_TEMPLATE.map((s) => s.stage).join(' • ')}
+                  </p>
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setIsTemplateOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" disabled={createMutation.isPending}>
+                    {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    Criar Projeto Padrão
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
               <Button onClick={() => { setEditingProject(null); setFormData({ name: '', description: '', status: 'active', project_type: 'bi', start_date: '', end_date: '', end_date_indeterminate: false }); }}>
