@@ -73,6 +73,8 @@ export default function AdminClientProjects() {
   const { clientId } = useParams<{ clientId: string }>();
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
+  const [isTemplateOpen, setIsTemplateOpen] = useState(false);
+  const [templateData, setTemplateData] = useState({ name: '', start_date: '', end_date: '' });
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [formData, setFormData] = useState({
     name: '',
