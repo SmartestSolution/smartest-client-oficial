@@ -102,15 +102,18 @@ export function StageChecklist({ stageId, projectId, isAdmin, source = 'project'
   };
 
   const handleToggle = (itemId: string, currentState: boolean) => {
+    const completing = !currentState;
     updateItem.mutate({
       id: itemId,
       updates: {
-        is_completed: !currentState,
-        completed_at: !currentState ? new Date().toISOString() : null,
-        status: !currentState ? 'done' : 'todo',
+        is_completed: completing,
+        completed_at: completing ? new Date().toISOString() : null,
+        status: completing ? 'done' : 'todo',
+        ...(completing && user?.id ? { assignee_id: user.id } : {}),
       } as any,
     });
   };
+
 
   const handleDelete = (itemId: string) => {
     deleteItem.mutate(itemId, {
