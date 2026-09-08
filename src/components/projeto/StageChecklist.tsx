@@ -351,7 +351,7 @@ export function StageChecklist({ stageId, projectId, isAdmin, source = 'project'
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none" className="text-xs">Sem responsável</SelectItem>
-                    {admins?.map(a => (
+                    {assigneeOptions.map(a => (
                       <SelectItem key={a.user_id} value={a.user_id} className="text-xs">{a.full_name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -364,7 +364,7 @@ export function StageChecklist({ stageId, projectId, isAdmin, source = 'project'
                   {item.end_date && <span>Prazo: {format(new Date(item.end_date + 'T00:00:00'), 'dd/MM/yy')}</span>}
                   {item.completed_at && <span className="text-success">Concluído: {format(new Date(item.completed_at), 'dd/MM/yy')}</span>}
                   {item.assignee_id && (
-                    <span>Resp.: {admins?.find(a => a.user_id === item.assignee_id)?.full_name || '—'}</span>
+                    <span>Resp.: {assigneeOptions.find(a => a.user_id === item.assignee_id)?.full_name || '—'}</span>
                   )}
                 </div>
               )
