@@ -33,7 +33,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { DEFAULT_PROJECT_TEMPLATE } from '@/hooks/useProjectStages';
+import { DEFAULT_PROJECT_TEMPLATE, buildTemplateSchedule } from '@/hooks/useProjectStages';
 import { 
   FolderKanban, 
   Plus, 
@@ -134,9 +134,11 @@ export default function AdminClientProjects() {
       
       if (error) throw error;
 
-      // Aplica o projeto padrão (etapas + tarefas)
+      // Aplica o projeto padrão (etapas + tarefas) com datas proporcionais
       const projectId = (created as any)?.id;
       if (projectId) {
+        const schedule = buildTemplateSchedule(data.start_date, data.end_date);
+
         const { data: stages, error: stagesError } = await (supabase as any)
           .from('project_stages')
           .insert(
@@ -145,20 +147,26 @@ export default function AdminClientProjects() {
               stage_name: s.stage,
               order_index: index,
               status: 'pending',
+              started_at: schedule?.[index]
+                ? new Date(`${schedule[index].start_date}T00:00:00Z`).toISOString()
+                : null,
             }))
           )
           .select('id, stage_name');
         if (stagesError) throw stagesError;
 
-        const items = DEFAULT_PROJECT_TEMPLATE.flatMap((s) => {
+        const items = DEFAULT_PROJECT_TEMPLATE.flatMap((s, index) => {
           const row = (stages as any[])?.find((c) => c.stage_name === s.stage);
           if (!row) return [];
+          const plan = schedule?.[index];
           return s.items.map((title, idx) => ({
             stage_id: row.id,
             title,
             order_index: idx,
             item_type: 'task',
             priority: 'medium',
+            start_date: plan?.items[idx]?.start_date ?? null,
+            end_date: plan?.items[idx]?.end_date ?? null,
           }));
         });
         if (items.length > 0) {
@@ -168,6 +176,7 @@ export default function AdminClientProjects() {
           if (itemsError) throw itemsError;
         }
       }
+
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['client-projects', clientId] });
