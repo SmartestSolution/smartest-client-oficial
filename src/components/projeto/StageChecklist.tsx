@@ -2,7 +2,9 @@ import { useState, useRef } from 'react';
 import { useProjectStageItems, useCreateStageItem, useUpdateStageItem, useDeleteStageItem, type StageItemType, type StageItemPriority } from '@/hooks/useProjectStageItems';
 import { useEvolutionStageItems, useCreateEvolutionStageItem, useUpdateEvolutionStageItem, useDeleteEvolutionStageItem } from '@/hooks/useEvolutionStageItems';
 import { useAdminUsers } from '@/hooks/useSupportTickets';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -72,6 +74,15 @@ export function StageChecklist({ stageId, projectId, isAdmin, source = 'project'
   };
 
   const { data: admins } = useAdminUsers();
+  const { user, profile } = useAuth();
+  const assigneeOptions = (() => {
+    const list = (admins || []).map(a => ({ user_id: a.user_id, full_name: a.full_name }));
+    if (user?.id && !list.some(a => a.user_id === user.id)) {
+      list.unshift({ user_id: user.id, full_name: profile?.full_name || 'Eu' });
+    }
+    return list;
+  })();
+
   const [newItemTitle, setNewItemTitle] = useState('');
   const [newItemType, setNewItemType] = useState<StageItemType>('task');
   const [newItemPriority, setNewItemPriority] = useState<StageItemPriority>('medium');
@@ -102,15 +113,18 @@ export function StageChecklist({ stageId, projectId, isAdmin, source = 'project'
   };
 
   const handleToggle = (itemId: string, currentState: boolean) => {
+    const completing = !currentState;
     updateItem.mutate({
       id: itemId,
       updates: {
-        is_completed: !currentState,
-        completed_at: !currentState ? new Date().toISOString() : null,
-        status: !currentState ? 'done' : 'todo',
+        is_completed: completing,
+        completed_at: completing ? new Date().toISOString() : null,
+        status: completing ? 'done' : 'todo',
+        ...(completing && user?.id ? { assignee_id: user.id } : {}),
       } as any,
     });
   };
+
 
   const handleDelete = (itemId: string) => {
     deleteItem.mutate(itemId, {
@@ -337,7 +351,7 @@ export function StageChecklist({ stageId, projectId, isAdmin, source = 'project'
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none" className="text-xs">Sem responsável</SelectItem>
-                    {admins?.map(a => (
+                    {assigneeOptions.map(a => (
                       <SelectItem key={a.user_id} value={a.user_id} className="text-xs">{a.full_name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -350,7 +364,7 @@ export function StageChecklist({ stageId, projectId, isAdmin, source = 'project'
                   {item.end_date && <span>Prazo: {format(new Date(item.end_date + 'T00:00:00'), 'dd/MM/yy')}</span>}
                   {item.completed_at && <span className="text-success">Concluído: {format(new Date(item.completed_at), 'dd/MM/yy')}</span>}
                   {item.assignee_id && (
-                    <span>Resp.: {admins?.find(a => a.user_id === item.assignee_id)?.full_name || '—'}</span>
+                    <span>Resp.: {assigneeOptions.find(a => a.user_id === item.assignee_id)?.full_name || '—'}</span>
                   )}
                 </div>
               )
