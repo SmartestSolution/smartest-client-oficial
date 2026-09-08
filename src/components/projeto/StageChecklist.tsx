@@ -74,6 +74,15 @@ export function StageChecklist({ stageId, projectId, isAdmin, source = 'project'
   };
 
   const { data: admins } = useAdminUsers();
+  const { user, profile } = useAuth();
+  const assigneeOptions = (() => {
+    const list = (admins || []).map(a => ({ user_id: a.user_id, full_name: a.full_name }));
+    if (user?.id && !list.some(a => a.user_id === user.id)) {
+      list.unshift({ user_id: user.id, full_name: profile?.full_name || 'Eu' });
+    }
+    return list;
+  })();
+
   const [newItemTitle, setNewItemTitle] = useState('');
   const [newItemType, setNewItemType] = useState<StageItemType>('task');
   const [newItemPriority, setNewItemPriority] = useState<StageItemPriority>('medium');
