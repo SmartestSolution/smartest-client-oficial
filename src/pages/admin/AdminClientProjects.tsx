@@ -74,7 +74,7 @@ export default function AdminClientProjects() {
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
   const [isTemplateOpen, setIsTemplateOpen] = useState(false);
-  const [templateData, setTemplateData] = useState({ name: '', start_date: '', end_date: '' });
+  const [templateData, setTemplateData] = useState({ name: '', start_date: '', end_date: '', retroactive: false });
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -84,6 +84,7 @@ export default function AdminClientProjects() {
     start_date: '',
     end_date: '',
     end_date_indeterminate: false,
+    retroactive: false,
   });
 
   const { data: client } = useQuery({
@@ -118,13 +119,14 @@ export default function AdminClientProjects() {
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
+      const retro = !!data.retroactive;
       const { data: created, error } = await supabase
         .from('projects')
         .insert({
           client_id: clientId,
           name: data.name,
           description: data.description || null,
-          status: data.status,
+          status: retro ? 'completed' : data.status,
           project_type: data.project_type,
           start_date: data.start_date || null,
           end_date: data.end_date || null,
@@ -138,6 +140,7 @@ export default function AdminClientProjects() {
       const projectId = (created as any)?.id;
       if (projectId) {
         const schedule = buildTemplateSchedule(data.start_date, data.end_date);
+        const iso = (d?: string | null) => (d ? new Date(`${d}T12:00:00Z`).toISOString() : null);
 
         const { data: stages, error: stagesError } = await (supabase as any)
           .from('project_stages')
@@ -146,10 +149,11 @@ export default function AdminClientProjects() {
               project_id: projectId,
               stage_name: s.stage,
               order_index: index,
-              status: 'pending',
+              status: retro ? 'completed' : 'pending',
               started_at: schedule?.[index]
                 ? new Date(`${schedule[index].start_date}T00:00:00Z`).toISOString()
                 : null,
+              completed_at: retro ? iso(schedule?.[index]?.end_date ?? data.end_date) : null,
             }))
           )
           .select('id, stage_name');
@@ -167,6 +171,9 @@ export default function AdminClientProjects() {
             priority: 'medium',
             start_date: plan?.items[idx]?.start_date ?? null,
             end_date: plan?.items[idx]?.end_date ?? null,
+            is_completed: retro,
+            status: retro ? 'done' : 'todo',
+            completed_at: retro ? iso(plan?.items[idx]?.end_date ?? data.end_date) : null,
           }));
         });
         if (items.length > 0) {
