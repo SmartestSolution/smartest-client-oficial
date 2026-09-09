@@ -238,11 +238,13 @@ export default function ProjectOverview() {
                 <Clock className="h-3.5 w-3.5" /> Prazo
               </div>
               <p className="text-lg font-semibold mt-1">
-                {daysRemaining === null ? '—' :
+                {projectDone ? 'Entregue no prazo' :
+                  daysRemaining === null ? '—' :
                   daysRemaining < 0 ? `${Math.abs(daysRemaining)} dias atrasado` :
                   daysRemaining === 0 ? 'Hoje' :
                   `${daysRemaining} dias restantes`}
               </p>
+
             </div>
             <div className="rounded-lg bg-primary-foreground/10 p-3">
               <div className="flex items-center gap-2 text-xs text-primary-foreground/70 uppercase tracking-wider">
