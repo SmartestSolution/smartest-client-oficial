@@ -45,10 +45,13 @@ BEGIN
            )
    WHERE s.project_id = v_project_id;
 
-  -- 3) Marcos / agenda dentro do prazo
-  UPDATE public.project_milestones m
-     SET status = 'completed'
-   WHERE m.project_id = v_project_id;
+  -- 3) Marcos / agenda dentro do prazo (ignora se a tabela não tiver status)
+  BEGIN
+    UPDATE public.project_milestones m
+       SET status = 'completed'
+     WHERE m.project_id = v_project_id;
+  EXCEPTION WHEN undefined_column OR undefined_table THEN NULL;
+  END;
 
   -- 4) Chamados de suporte do projeto encerrados dentro do prazo
   UPDATE public.support_tickets t
