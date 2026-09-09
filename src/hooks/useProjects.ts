@@ -56,7 +56,9 @@ export function useProject(id: string | undefined) {
 export function computeProjectStatus(project: Project, stages?: { status: string }[]): string {
   // If manually set to archived, keep it
   if (project.status === 'archived') return 'archived';
-  
+  // Projeto marcado como concluído nunca é considerado atrasado
+  if (project.status === 'completed') return 'completed';
+
   const allCompleted = stages && stages.length > 0 && stages.every(s => s.status === 'completed');
   if (allCompleted) return 'completed';
   

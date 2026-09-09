@@ -159,8 +159,10 @@ export default function ProjectOverview() {
     ? Math.min(100, Math.max(0, Math.round((elapsedDays / totalDays) * 100)))
     : null;
 
+  const projectDone = allStagesDone || project.status === 'completed';
+
   const statusBadge = (() => {
-    if (allStagesDone)
+    if (projectDone)
       return { label: 'Concluído', cls: 'bg-success/10 text-success border-success/30' };
     if (daysRemaining !== null && daysRemaining < 0)
       return { label: 'Atrasado', cls: 'bg-destructive/10 text-destructive border-destructive/30' };
@@ -236,11 +238,13 @@ export default function ProjectOverview() {
                 <Clock className="h-3.5 w-3.5" /> Prazo
               </div>
               <p className="text-lg font-semibold mt-1">
-                {daysRemaining === null ? '—' :
+                {projectDone ? 'Entregue no prazo' :
+                  daysRemaining === null ? '—' :
                   daysRemaining < 0 ? `${Math.abs(daysRemaining)} dias atrasado` :
                   daysRemaining === 0 ? 'Hoje' :
                   `${daysRemaining} dias restantes`}
               </p>
+
             </div>
             <div className="rounded-lg bg-primary-foreground/10 p-3">
               <div className="flex items-center gap-2 text-xs text-primary-foreground/70 uppercase tracking-wider">
