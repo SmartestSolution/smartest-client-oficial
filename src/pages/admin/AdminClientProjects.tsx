@@ -74,13 +74,24 @@ export default function AdminClientProjects() {
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
   const [isTemplateOpen, setIsTemplateOpen] = useState(false);
-  const [templateData, setTemplateData] = useState({ name: '', start_date: '', end_date: '', retroactive: false });
+  const [templateData, setTemplateData] = useState<{
+    name: string; start_date: string; end_date: string; retroactive?: boolean;
+  }>({ name: '', start_date: '', end_date: '', retroactive: false });
   const [editingProject, setEditingProject] = useState<Project | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string;
+    description: string;
+    status: string;
+    project_type: 'bi' | 'automation' | 'sql';
+    start_date: string;
+    end_date: string;
+    end_date_indeterminate: boolean;
+    retroactive?: boolean;
+  }>({
     name: '',
     description: '',
     status: 'active',
-    project_type: 'bi' as 'bi' | 'automation' | 'sql',
+    project_type: 'bi',
     start_date: '',
     end_date: '',
     end_date_indeterminate: false,
