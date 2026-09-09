@@ -337,6 +337,7 @@ export default function AdminClientProjects() {
                     start_date: templateData.start_date,
                     end_date: templateData.end_date,
                     end_date_indeterminate: false,
+                    retroactive: !!templateData.retroactive,
                   });
                 }}
               >
@@ -372,9 +373,24 @@ export default function AdminClientProjects() {
                       />
                     </div>
                   </div>
+                  <label className="flex items-start gap-3 rounded-lg border p-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4 accent-primary"
+                      checked={!!templateData.retroactive}
+                      onChange={(e) => setTemplateData({ ...templateData, retroactive: e.target.checked })}
+                    />
+                    <span>
+                      <span className="text-sm font-medium block">Projeto retroativo (já concluído)</span>
+                      <span className="text-xs text-muted-foreground">
+                        Marca todas as etapas e tarefas como concluídas dentro do prazo planejado, sem atraso.
+                      </span>
+                    </span>
+                  </label>
                   <p className="text-xs text-muted-foreground">
                     Etapas incluídas: {DEFAULT_PROJECT_TEMPLATE.map((s) => s.stage).join(' • ')}
                   </p>
+
                 </div>
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={() => setIsTemplateOpen(false)}>
