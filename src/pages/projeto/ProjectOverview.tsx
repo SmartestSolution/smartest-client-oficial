@@ -159,8 +159,10 @@ export default function ProjectOverview() {
     ? Math.min(100, Math.max(0, Math.round((elapsedDays / totalDays) * 100)))
     : null;
 
+  const projectDone = allStagesDone || project.status === 'completed';
+
   const statusBadge = (() => {
-    if (allStagesDone)
+    if (projectDone)
       return { label: 'Concluído', cls: 'bg-success/10 text-success border-success/30' };
     if (daysRemaining !== null && daysRemaining < 0)
       return { label: 'Atrasado', cls: 'bg-destructive/10 text-destructive border-destructive/30' };
