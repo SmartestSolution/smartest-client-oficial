@@ -240,31 +240,38 @@ function TableView({ stages, expandedStage, setExpandedStage, projectId, isAdmin
   );
 }
 
-function GanttView({ stages, project }: { stages: any[]; project: any }) {
-  const stagesWithDates = stages.filter(s => s.started_at);
-  const allDates = stagesWithDates.flatMap(s => {
-    const dates = [new Date(s.started_at)];
-    if (s.completed_at) dates.push(new Date(s.completed_at));
-    return dates;
-  });
+function toDate(value?: string | null): Date | null {
+  if (!value) return null;
+  // Datas "YYYY-MM-DD" viram meio-dia local para evitar deslocamento de fuso
+  const dateOnly = value.slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) return new Date(`${dateOnly}T12:00:00`);
+  return new Date(value);
+}
 
-  if (allDates.length === 0) {
+function GanttView({ stages, project }: { stages: any[]; project: any }) {
+  const projectStart = toDate(project?.start_date);
+  const projectEnd = toDate(project?.end_date);
+
+  const stageDates = stages.flatMap((s) => [toDate(s.started_at), toDate(s.completed_at)]).filter(Boolean) as Date[];
+
+  const minDate = projectStart || (stageDates.length ? new Date(Math.min(...stageDates.map(d => d.getTime()))) : null);
+  const maxDate = projectEnd || (stageDates.length ? new Date(Math.max(...stageDates.map(d => d.getTime()))) : null);
+
+  if (!minDate || !maxDate) {
     return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-12">
           <BarChart3 className="h-12 w-12 text-muted-foreground/50 mb-4" />
           <h3 className="text-lg font-medium">Sem dados para o Gantt</h3>
           <p className="text-sm text-muted-foreground mt-1">
-            As etapas precisam ter datas de início e término para visualizar o gráfico de Gantt.
+            Defina a data de início e de término do projeto (ou das etapas) para visualizar o gráfico.
           </p>
         </CardContent>
       </Card>
     );
   }
 
-  const minDate = new Date(Math.min(...allDates.map(d => d.getTime())));
-  const maxDate = new Date(Math.max(...allDates.map(d => d.getTime()), Date.now()));
-  const totalDays = Math.max(differenceInDays(maxDate, minDate), 1);
+  const totalDays = Math.max(differenceInDays(maxDate, minDate) + 1, 1);
 
   return (
     <Card>
@@ -280,34 +287,15 @@ function GanttView({ stages, project }: { stages: any[]; project: any }) {
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
-          {stages.map((stage) => {
-            const Icon = stageIcons[stage.stage_name] || Circle;
-
-            let leftPercent = 0;
-            let widthPercent = 0;
-
-            if (stage.started_at) {
-              const start = new Date(stage.started_at);
-              const end = stage.completed_at ? new Date(stage.completed_at) : new Date();
-              leftPercent = (differenceInDays(start, minDate) / totalDays) * 100;
-              widthPercent = Math.max((differenceInDays(end, start) / totalDays) * 100, 2);
-            }
-
-            return (
-              <div key={stage.id} className="flex items-center gap-3">
-                <div className="w-40 shrink-0 flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground w-4">{stage.order_index + 1}</span>
-                  <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  <span className="text-sm truncate">{stage.stage_name}</span>
-                </div>
-                <div className="flex-1 h-8 bg-muted rounded-md relative overflow-hidden">
-                  {stage.started_at && (
-                    <GanttBar stageId={stage.id} leftPercent={leftPercent} widthPercent={widthPercent} />
-                  )}
-                </div>
-              </div>
-            );
-          })}
+          {stages.map((stage) => (
+            <GanttRow
+              key={stage.id}
+              stage={stage}
+              minDate={minDate}
+              maxDate={maxDate}
+              totalDays={totalDays}
+            />
+          ))}
         </div>
         <div className="flex items-center gap-6 mt-4 text-xs text-muted-foreground">
           <div className="flex items-center gap-1.5">
@@ -328,23 +316,70 @@ function GanttView({ stages, project }: { stages: any[]; project: any }) {
   );
 }
 
-function GanttBar({ stageId, leftPercent, widthPercent }: { stageId: string; leftPercent: number; widthPercent: number }) {
-  const { data: items } = useProjectStageItems(stageId);
+function GanttRow({ stage, minDate, maxDate, totalDays }: {
+  stage: any;
+  minDate: Date;
+  maxDate: Date;
+  totalDays: number;
+}) {
+  const { data: items } = useProjectStageItems(stage.id);
+  const Icon = stageIcons[stage.stage_name] || Circle;
+
   const total = items?.length || 0;
-  const completed = items?.filter(i => i.is_completed).length || 0;
+  const completed = items?.filter((i: any) => i.is_completed).length || 0;
   const status = total === 0 ? 'pending' : completed === total ? 'completed' : completed > 0 ? 'in_progress' : 'pending';
 
+  // Janela planejada da etapa: datas das tarefas, com fallback nas datas da etapa
+  const itemStarts = (items || []).map((i: any) => toDate(i.start_date)).filter(Boolean) as Date[];
+  const itemEnds = (items || []).map((i: any) => toDate(i.end_date)).filter(Boolean) as Date[];
+
+  const rawStart = toDate(stage.started_at)
+    || (itemStarts.length ? new Date(Math.min(...itemStarts.map(d => d.getTime()))) : null);
+  const rawEnd = (itemEnds.length ? new Date(Math.max(...itemEnds.map(d => d.getTime()))) : null)
+    || toDate(stage.completed_at);
+
+  if (!rawStart && !rawEnd) {
+    return (
+      <div className="flex items-center gap-3">
+        <div className="w-40 shrink-0 flex items-center gap-2">
+          <span className="text-xs text-muted-foreground w-4">{stage.order_index + 1}</span>
+          <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="text-sm truncate">{stage.stage_name}</span>
+        </div>
+        <div className="flex-1 h-8 bg-muted rounded-md" />
+      </div>
+    );
+  }
+
+  const clamp = (d: Date) => new Date(Math.min(Math.max(d.getTime(), minDate.getTime()), maxDate.getTime()));
+  const start = clamp(rawStart || rawEnd!);
+  const end = clamp(rawEnd || rawStart!);
+
+  const offset = differenceInDays(start, minDate);
+  const duration = Math.max(differenceInDays(end, start) + 1, 1);
+  const leftPercent = Math.min(100, Math.max(0, (offset / totalDays) * 100));
+  const widthPercent = Math.min(100 - leftPercent, Math.max((duration / totalDays) * 100, 1.5));
+
   return (
-    <div
-      className={cn(
-        'absolute top-1 bottom-1 rounded transition-all',
-        status === 'completed' ? 'bg-primary' : status === 'in_progress' ? 'bg-warning' : 'bg-muted-foreground/30'
-      )}
-      style={{
-        left: `${leftPercent}%`,
-        width: `${widthPercent}%`,
-        minWidth: '8px',
-      }}
-    />
+    <div className="flex items-center gap-3">
+      <div className="w-40 shrink-0 flex items-center gap-2">
+        <span className="text-xs text-muted-foreground w-4">{stage.order_index + 1}</span>
+        <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <span className="text-sm truncate">{stage.stage_name}</span>
+      </div>
+      <div className="flex-1 h-8 bg-muted rounded-md relative overflow-hidden">
+        <div
+          title={`${format(start, 'dd/MM/yyyy', { locale: ptBR })} — ${format(end, 'dd/MM/yyyy', { locale: ptBR })}`}
+          className={cn(
+            'absolute top-1 bottom-1 rounded transition-all',
+            status === 'completed' ? 'bg-primary' : status === 'in_progress' ? 'bg-warning' : 'bg-muted-foreground/30'
+          )}
+          style={{ left: `${leftPercent}%`, width: `${widthPercent}%`, minWidth: '8px' }}
+        />
+      </div>
+      <div className="hidden md:block w-44 shrink-0 text-[11px] text-muted-foreground text-right">
+        {format(start, 'dd/MM/yy', { locale: ptBR })} — {format(end, 'dd/MM/yy', { locale: ptBR })}
+      </div>
+    </div>
   );
 }
