@@ -34,7 +34,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   Plus, Loader2, ArrowLeft, Bug, ListTodo, HelpCircle, Sparkles,
-  Search, Calendar, User, Flag,
+  Search, Calendar, User, Flag, Clock,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -80,6 +80,16 @@ function toDatetimeLocal(iso: string | null): string {
 function fromDatetimeLocal(v: string): string | null {
   if (!v) return null;
   return new Date(v).toISOString();
+}
+
+function futureDatetimeLocal(hours: number): string {
+  const d = new Date(Date.now() + hours * 3_600_000);
+  const off = d.getTimezoneOffset();
+  return new Date(d.getTime() - off * 60_000).toISOString().slice(0, 16);
+}
+
+function datesAreValid(start: string, end: string) {
+  return !start || !end || new Date(end).getTime() >= new Date(start).getTime();
 }
 
 export default function ProjectSupport() {
@@ -130,6 +140,10 @@ export default function ProjectSupport() {
   const handleCreate = async () => {
     if (!f.subject.trim() || !f.message.trim()) {
       toast.error('Preencha assunto e descrição');
+      return;
+    }
+    if (!datesAreValid(f.start_at, f.end_at)) {
+      toast.error('A data final não pode ser anterior ao início');
       return;
     }
     try {
@@ -217,11 +231,15 @@ export default function ProjectSupport() {
                     {isAdmin && (
                       <>
                         <div>
-                          <label className="text-xs text-muted-foreground">Início</label>
+                          <label className="text-xs text-muted-foreground">Início agendado</label>
                           <Input type="datetime-local" value={f.start_at} onChange={e => setF({ ...f, start_at: e.target.value })} />
+                          <div className="flex gap-1.5 mt-1.5">
+                            <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={() => setF({ ...f, start_at: futureDatetimeLocal(1) })}>Em 1 hora</Button>
+                            <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={() => setF({ ...f, start_at: futureDatetimeLocal(24) })}>Amanhã</Button>
+                          </div>
                         </div>
                         <div>
-                          <label className="text-xs text-muted-foreground">Prazo final</label>
+                          <label className="text-xs text-muted-foreground">Data final (opcional)</label>
                           <Input type="datetime-local" value={f.end_at} onChange={e => setF({ ...f, end_at: e.target.value })} />
                         </div>
                       </>
@@ -335,10 +353,11 @@ function TicketCard({ t, onOpen, compact }: { t: SupportTicket; onOpen: (t: Supp
         </div>
         <p className="text-sm font-medium leading-snug line-clamp-2">{t.subject}</p>
         {!compact && <p className="text-xs text-muted-foreground line-clamp-2">{t.message}</p>}
-        <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
-          {t.end_at ? (
-            <span className="inline-flex items-center gap-1"><Calendar className="h-3 w-3" />{format(new Date(t.end_at), "dd/MM HH:mm", { locale: ptBR })}</span>
-          ) : <span />}
+        {t.project_name && <Badge variant="secondary" className="max-w-full truncate text-[10px]">{t.project_name}</Badge>}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
+          <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />Solicitado {format(new Date(t.created_at), "dd/MM/yy HH:mm", { locale: ptBR })}</span>
+          {t.start_at && <span className="inline-flex items-center gap-1"><Calendar className="h-3 w-3" />Início {format(new Date(t.start_at), "dd/MM/yy HH:mm", { locale: ptBR })}</span>}
+          {t.end_at && <span className="inline-flex items-center gap-1"><Calendar className="h-3 w-3" />Final {format(new Date(t.end_at), "dd/MM/yy HH:mm", { locale: ptBR })}</span>}
           {t.assignee && (
             <span className="inline-flex items-center gap-1 truncate max-w-[120px]"><User className="h-3 w-3" />{t.assignee.full_name}</span>
           )}
@@ -486,11 +505,17 @@ function TicketDialog({
               </Select>
             </div>
             <div>
-              <label className="text-xs text-muted-foreground">Início</label>
+              <label className="text-xs text-muted-foreground">Início agendado</label>
               <Input type="datetime-local" value={form.start_at} onChange={e => setForm({ ...form, start_at: e.target.value })} disabled={!isAdmin} />
+              {isAdmin && (
+                <div className="flex gap-1.5 mt-1.5">
+                  <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={() => setForm({ ...form, start_at: futureDatetimeLocal(1) })}>Em 1 hora</Button>
+                  <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={() => setForm({ ...form, start_at: futureDatetimeLocal(24) })}>Amanhã</Button>
+                </div>
+              )}
             </div>
             <div>
-              <label className="text-xs text-muted-foreground">Finalizado em</label>
+              <label className="text-xs text-muted-foreground">Data final (opcional)</label>
               <Input type="datetime-local" value={form.end_at} onChange={e => setForm({ ...form, end_at: e.target.value })} disabled={!isAdmin} />
             </div>
           </div>
@@ -509,15 +534,21 @@ function TicketDialog({
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Fechar</Button>
           {isAdmin && (
-            <Button onClick={() => onSave({
-              status: form.status,
-              priority: form.priority,
-              ticket_type: form.ticket_type,
-              assignee_id: form.assignee_id || null,
-              start_at: fromDatetimeLocal(form.start_at),
-              end_at: fromDatetimeLocal(form.end_at),
-              resolution_notes: form.resolution_notes,
-            })}>
+            <Button onClick={() => {
+              if (!datesAreValid(form.start_at, form.end_at)) {
+                toast.error('A data final não pode ser anterior ao início');
+                return;
+              }
+              onSave({
+                status: form.status,
+                priority: form.priority,
+                ticket_type: form.ticket_type,
+                assignee_id: form.assignee_id || null,
+                start_at: fromDatetimeLocal(form.start_at),
+                end_at: fromDatetimeLocal(form.end_at),
+                resolution_notes: form.resolution_notes,
+              });
+            }}>
               Salvar
             </Button>
           )}

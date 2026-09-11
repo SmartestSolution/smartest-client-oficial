@@ -28,8 +28,9 @@ import {
 } from '@/components/ui/command';
 import {
   Plus, Loader2, Bug, ListTodo, HelpCircle, Sparkles,
-  Search, Calendar, User, Flag, Check, ChevronsUpDown, LifeBuoy,
+  Search, Calendar, User, Flag, Check, ChevronsUpDown, LifeBuoy, Clock,
 } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -70,6 +71,30 @@ function fromDatetimeLocal(v: string): string | null {
   return new Date(v).toISOString();
 }
 
+function toDatetimeLocal(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const off = d.getTimezoneOffset();
+  return new Date(d.getTime() - off * 60_000).toISOString().slice(0, 16);
+}
+
+function futureDatetimeLocal(hours: number): string {
+  const d = new Date(Date.now() + hours * 3_600_000);
+  const off = d.getTimezoneOffset();
+  return new Date(d.getTime() - off * 60_000).toISOString().slice(0, 16);
+}
+
+function datesAreValid(start: string, end: string) {
+  return !start || !end || new Date(end).getTime() >= new Date(start).getTime();
+}
+
+const STATUS_COLUMNS = [
+  { id: 'todo', label: 'A Fazer', cls: 'border-muted-foreground/40' },
+  { id: 'in_progress', label: 'Em Progresso', cls: 'border-primary/60' },
+  { id: 'review', label: 'Em Revisão', cls: 'border-warning/60' },
+  { id: 'done', label: 'Concluído', cls: 'border-success/60' },
+];
+
 export default function AdminSupport() {
   const { data: tickets, isLoading } = useSupportTickets();
   const { data: admins } = useAdminUsers();
@@ -90,6 +115,7 @@ export default function AdminSupport() {
   });
 
   const [search, setSearch] = useState('');
+  const [view, setView] = useState<'backlog' | 'board'>('backlog');
   const [filterProject, setFilterProject] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterPriority, setFilterPriority] = useState<string>('all');
@@ -134,13 +160,19 @@ export default function AdminSupport() {
     return list;
   }, [tickets, search, filterProject, filterStatus, filterPriority, filterType]);
 
+  const byStatus = useMemo(() => {
+    const map: Record<string, SupportTicket[]> = { todo: [], in_progress: [], review: [], done: [] };
+    filtered.forEach(t => (map[normalizeStatus(t.status)] ||= []).push(t));
+    return map;
+  }, [filtered]);
+
   const handleCreate = async () => {
     if (!f.subject.trim() || !f.message.trim()) {
       toast.error('Preencha assunto e descrição');
       return;
     }
-    if (!f.project_id) {
-      toast.error('Selecione um projeto');
+    if (!datesAreValid(f.start_at, f.end_at)) {
+      toast.error('A data final não pode ser anterior ao início');
       return;
     }
     try {
@@ -186,6 +218,10 @@ export default function AdminSupport() {
               <p className="text-sm text-muted-foreground">Tickets de todos os projetos</p>
             </div>
           </div>
+          <div className="flex items-center gap-2">
+          <Tabs value={view} onValueChange={v => setView(v as 'backlog' | 'board')}>
+            <TabsList><TabsTrigger value="backlog">Backlog</TabsTrigger><TabsTrigger value="board">Board</TabsTrigger></TabsList>
+          </Tabs>
           <Dialog open={showForm} onOpenChange={setShowForm}>
             <DialogTrigger asChild>
               <Button className="gap-2"><Plus className="h-4 w-4" /> Novo Ticket</Button>
@@ -267,11 +303,15 @@ export default function AdminSupport() {
                     </Select>
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground">Início</label>
+                    <label className="text-xs text-muted-foreground">Início agendado</label>
                     <Input type="datetime-local" value={f.start_at} onChange={e => setF({ ...f, start_at: e.target.value })} />
+                    <div className="flex gap-1.5 mt-1.5">
+                      <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={() => setF({ ...f, start_at: futureDatetimeLocal(1) })}>Em 1 hora</Button>
+                      <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={() => setF({ ...f, start_at: futureDatetimeLocal(24) })}>Amanhã</Button>
+                    </div>
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground">Prazo final</label>
+                    <label className="text-xs text-muted-foreground">Data final (opcional)</label>
                     <Input type="datetime-local" value={f.end_at} onChange={e => setF({ ...f, end_at: e.target.value })} />
                   </div>
                 </div>
@@ -295,6 +335,7 @@ export default function AdminSupport() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
         {/* KPI cards */}
@@ -383,7 +424,7 @@ export default function AdminSupport() {
           <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
         ) : filtered.length === 0 ? (
           <Card><CardContent className="py-12 text-center text-muted-foreground">Nenhum ticket encontrado.</CardContent></Card>
-        ) : (
+        ) : view === 'backlog' ? (
           <div className="space-y-2">
             {filtered.map(t => {
               const type = TYPE_META[t.ticket_type] || TYPE_META.task;
@@ -409,20 +450,58 @@ export default function AdminSupport() {
                     </div>
                     <p className="text-sm font-medium">{t.subject}</p>
                     <p className="text-xs text-muted-foreground line-clamp-2">{t.message}</p>
-                    <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                    <div className="flex flex-wrap items-center gap-3 text-[10px] text-muted-foreground">
                       <span>Solicitado por {t.profiles?.full_name || '—'}</span>
-                      <span>· {format(new Date(t.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}</span>
+                      <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" />Solicitado {format(new Date(t.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}</span>
+                      {t.start_at && <span className="inline-flex items-center gap-1"><Calendar className="h-3 w-3" />Início {format(new Date(t.start_at), "dd/MM HH:mm", { locale: ptBR })}</span>}
                       {t.assignee && (
                         <span className="inline-flex items-center gap-1"><User className="h-3 w-3" />{t.assignee.full_name}</span>
                       )}
                       {t.end_at && (
-                        <span className="inline-flex items-center gap-1"><Calendar className="h-3 w-3" />{format(new Date(t.end_at), "dd/MM HH:mm", { locale: ptBR })}</span>
+                        <span className="inline-flex items-center gap-1"><Calendar className="h-3 w-3" />Final {format(new Date(t.end_at), "dd/MM HH:mm", { locale: ptBR })}</span>
                       )}
                     </div>
                   </CardContent>
                 </Card>
               );
             })}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            {STATUS_COLUMNS.map(col => (
+              <div key={col.id} className={cn('rounded-lg border-2 border-dashed p-2 bg-muted/20 min-h-[300px]', col.cls)}
+                onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
+                onDrop={async e => {
+                  const ticket = filtered.find(t => t.id === e.dataTransfer.getData('ticket-id'));
+                  if (ticket && normalizeStatus(ticket.status) !== col.id) {
+                    try { await updateTicket.mutateAsync({ ticketId: ticket.id, updates: { status: col.id } }); }
+                    catch (error: any) { toast.error('Erro: ' + error.message); }
+                  }
+                }}>
+                <div className="flex items-center justify-between mb-2 px-1">
+                  <h3 className="text-xs font-semibold uppercase text-muted-foreground">{col.label}</h3>
+                  <Badge variant="secondary" className="text-[10px]">{byStatus[col.id]?.length || 0}</Badge>
+                </div>
+                <div className="space-y-2">
+                  {(byStatus[col.id] || []).map(t => (
+                    <div key={t.id} draggable onDragStart={e => { e.dataTransfer.setData('ticket-id', t.id); e.dataTransfer.effectAllowed = 'move'; }}>
+                      <Card className="cursor-pointer hover:border-primary/40" onClick={() => setOpenTicket(t)}>
+                        <CardContent className="p-2.5 space-y-2">
+                          <div className="flex gap-2"><Badge variant="outline" className="text-[10px]">{TYPE_META[t.ticket_type]?.label || 'Tarefa'}</Badge><Badge variant="secondary" className="ml-auto text-[10px]">{PRIORITY_META[t.priority]?.label || 'Média'}</Badge></div>
+                          <p className="text-sm font-medium line-clamp-2">{t.subject}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">{t.project_name || SYSTEM_SUPPORT_LABEL}</p>
+                          <div className="space-y-1 text-[10px] text-muted-foreground">
+                            <p><Clock className="h-3 w-3 inline mr-1" />Solicitado {format(new Date(t.created_at), 'dd/MM HH:mm')}</p>
+                            {t.start_at && <p><Calendar className="h-3 w-3 inline mr-1" />Início {format(new Date(t.start_at), 'dd/MM HH:mm')}</p>}
+                            {t.end_at && <p><Calendar className="h-3 w-3 inline mr-1" />Final {format(new Date(t.end_at), 'dd/MM HH:mm')}</p>}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
@@ -441,7 +520,10 @@ export default function AdminSupport() {
                     <Badge variant="outline" className="text-primary border-primary/30">{SYSTEM_SUPPORT_LABEL}</Badge>
                   )}
                   <p className="text-sm whitespace-pre-wrap">{openTicket.message}</p>
-                  <div className="grid grid-cols-2 gap-3">
+                   <div className="text-xs text-muted-foreground">
+                     Solicitado por <span className="font-medium text-foreground">{openTicket.profiles?.full_name || 'Usuário'}</span> em {format(new Date(openTicket.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                   </div>
+                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs text-muted-foreground">Status</label>
                       <Select
@@ -476,6 +558,18 @@ export default function AdminSupport() {
                         </SelectContent>
                       </Select>
                     </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Início agendado</label>
+                      <Input type="datetime-local" value={toDatetimeLocal(openTicket.start_at)} onChange={e => setOpenTicket({ ...openTicket, start_at: fromDatetimeLocal(e.target.value) })} />
+                      <div className="flex gap-1.5 mt-1.5">
+                        <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={() => setOpenTicket({ ...openTicket, start_at: fromDatetimeLocal(futureDatetimeLocal(1)) })}>Em 1 hora</Button>
+                        <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={() => setOpenTicket({ ...openTicket, start_at: fromDatetimeLocal(futureDatetimeLocal(24)) })}>Amanhã</Button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Data final (opcional)</label>
+                      <Input type="datetime-local" value={toDatetimeLocal(openTicket.end_at)} onChange={e => setOpenTicket({ ...openTicket, end_at: fromDatetimeLocal(e.target.value) })} />
+                    </div>
                   </div>
                   {openTicket.project_id && (
                     <p className="text-xs text-muted-foreground">
@@ -485,6 +579,14 @@ export default function AdminSupport() {
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setOpenTicket(null)}>Fechar</Button>
+                  <Button onClick={async () => {
+                    const start = toDatetimeLocal(openTicket.start_at);
+                    const end = toDatetimeLocal(openTicket.end_at);
+                    if (!datesAreValid(start, end)) { toast.error('A data final não pode ser anterior ao início'); return; }
+                    await updateTicket.mutateAsync({ ticketId: openTicket.id, updates: { start_at: openTicket.start_at, end_at: openTicket.end_at } });
+                    toast.success('Datas atualizadas');
+                    setOpenTicket(null);
+                  }}>Salvar</Button>
                   {openTicket.project_id && (
                     <Button asChild>
                       <a href={`/projeto/${openTicket.project_id}/suporte`}>Abrir no projeto</a>
