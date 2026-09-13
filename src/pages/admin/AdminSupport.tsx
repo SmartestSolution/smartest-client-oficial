@@ -218,7 +218,7 @@ export default function AdminSupport() {
               <p className="text-sm text-muted-foreground">Tickets de todos os projetos</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
           <Tabs value={view} onValueChange={v => setView(v as 'backlog' | 'board')}>
             <TabsList><TabsTrigger value="backlog">Backlog</TabsTrigger><TabsTrigger value="board">Board</TabsTrigger></TabsList>
           </Tabs>
@@ -230,7 +230,7 @@ export default function AdminSupport() {
               <DialogHeader><DialogTitle>Novo Ticket</DialogTitle></DialogHeader>
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs text-muted-foreground">Projeto *</label>
+                  <label className="text-xs text-muted-foreground">Projeto / Central</label>
                   <Popover open={openFormProject} onOpenChange={setOpenFormProject}>
                     <PopoverTrigger asChild>
                       <Button variant="outline" role="combobox" className="w-full justify-between">
@@ -277,7 +277,7 @@ export default function AdminSupport() {
                 </div>
                 <Input placeholder="Assunto" value={f.subject} onChange={e => setF({ ...f, subject: e.target.value })} />
                 <Textarea placeholder="Descreva..." rows={4} value={f.message} onChange={e => setF({ ...f, message: e.target.value })} />
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs text-muted-foreground">Tipo</label>
                     <Select value={f.ticket_type} onValueChange={v => setF({ ...f, ticket_type: v })}>
@@ -523,7 +523,7 @@ export default function AdminSupport() {
                    <div className="text-xs text-muted-foreground">
                      Solicitado por <span className="font-medium text-foreground">{openTicket.profiles?.full_name || 'Usuário'}</span> em {format(new Date(openTicket.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                    </div>
-                   <div className="grid grid-cols-2 gap-3">
+                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs text-muted-foreground">Status</label>
                       <Select
@@ -583,9 +583,13 @@ export default function AdminSupport() {
                     const start = toDatetimeLocal(openTicket.start_at);
                     const end = toDatetimeLocal(openTicket.end_at);
                     if (!datesAreValid(start, end)) { toast.error('A data final não pode ser anterior ao início'); return; }
-                    await updateTicket.mutateAsync({ ticketId: openTicket.id, updates: { start_at: openTicket.start_at, end_at: openTicket.end_at } });
-                    toast.success('Datas atualizadas');
-                    setOpenTicket(null);
+                    try {
+                      await updateTicket.mutateAsync({ ticketId: openTicket.id, updates: { start_at: openTicket.start_at, end_at: openTicket.end_at } });
+                      toast.success('Datas atualizadas');
+                      setOpenTicket(null);
+                    } catch (error: any) {
+                      toast.error('Erro: ' + error.message);
+                    }
                   }}>Salvar</Button>
                   {openTicket.project_id && (
                     <Button asChild>

@@ -187,7 +187,7 @@ export default function ProjectSupport() {
               <p className="text-sm text-muted-foreground">{project?.name}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Tabs value={view} onValueChange={(v) => setView(v as any)}>
               <TabsList>
                 <TabsTrigger value="backlog">Backlog</TabsTrigger>
@@ -203,7 +203,7 @@ export default function ProjectSupport() {
                 <div className="space-y-3">
                   <Input placeholder="Assunto" value={f.subject} onChange={e => setF({ ...f, subject: e.target.value })} />
                   <Textarea placeholder="Descreva o que precisa..." rows={4} value={f.message} onChange={e => setF({ ...f, message: e.target.value })} />
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs text-muted-foreground">Tipo</label>
                       <Select value={f.ticket_type} onValueChange={v => setF({ ...f, ticket_type: v })}>
@@ -466,7 +466,7 @@ function TicketDialog({
             em {format(new Date(ticket.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-muted-foreground">Status</label>
               <Select value={form.status} onValueChange={v => setForm({ ...form, status: v })} disabled={!isAdmin}>
