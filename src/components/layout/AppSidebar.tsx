@@ -37,6 +37,7 @@ import {
   Search,
   Check,
   Users,
+  ListChecks,
 } from 'lucide-react';
 import logo from '@/assets/logo-smartest.svg';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -194,6 +195,14 @@ export function AppSidebar() {
                   <NavLink to="/dashboard" className="flex items-center gap-3">
                     <LayoutDashboard className="h-4 w-4" />
                     {!collapsed && <span>Dashboard</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={location.pathname === '/central-de-trabalho'}>
+                  <NavLink to="/central-de-trabalho" className="flex items-center gap-3">
+                    <ListChecks className="h-4 w-4" />
+                    {!collapsed && <span>Central de Trabalho</span>}
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
