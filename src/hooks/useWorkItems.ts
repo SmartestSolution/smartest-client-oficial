@@ -263,15 +263,18 @@ export function useWorkItemAction() {
         } else if (action === 'complete') {
           updates.status = 'done';
           if (!item.startedAt) updates.start_at = now;
-          updates.end_at = now;
+          updates.end_at = item.dueDate ? completionIso : now;
           if (!item.assigneeId) updates.assignee_id = user?.id ?? null;
         } else if (action === 'reopen') {
           updates.status = 'todo';
           updates.end_at = null;
+          if (date) updates.start_at = new Date(`${date.slice(0, 10)}T09:00:00`).toISOString();
+          if (endDate) updates.end_at = new Date(`${endDate.slice(0, 10)}T18:00:00`).toISOString();
         } else if (action === 'block') {
           updates.status = 'review';
-        } else if (action === 'schedule' && date) {
-          updates.start_at = date;
+        } else if (action === 'schedule') {
+          if (date) updates.start_at = date;
+          if (endDate) updates.end_at = new Date(`${endDate.slice(0, 10)}T18:00:00`).toISOString();
         }
         const { error } = await (supabase as any)
           .from('support_tickets')
