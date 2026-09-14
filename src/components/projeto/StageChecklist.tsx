@@ -255,7 +255,7 @@ export function StageChecklist({ stageId, projectId, isAdmin, source = 'project'
             <div className="flex items-center gap-3">
               <Checkbox
                 checked={item.is_completed}
-                onCheckedChange={() => handleToggle(item.id, item.is_completed)}
+                onCheckedChange={() => handleToggle(item.id, item.is_completed, (item as any).end_date)}
                 disabled={!isAdmin}
               />
               <span className={cn(
