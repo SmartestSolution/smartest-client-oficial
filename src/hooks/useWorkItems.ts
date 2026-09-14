@@ -92,10 +92,11 @@ export const BUCKET_LABEL: Record<WorkBucket, string> = {
 };
 
 export function useWorkItems() {
-  const { user } = useAuth();
+  const { user, isAdmin, profile } = useAuth();
+  const company = (profile?.company || '').trim().toLowerCase();
 
   return useQuery({
-    queryKey: ['work-items'],
+    queryKey: ['work-items', user?.id, isAdmin, company],
     enabled: !!user,
     queryFn: async (): Promise<WorkItem[]> => {
       const [projectsRes, clientsRes, stagesRes, itemsRes, ticketsRes, profilesRes] = await Promise.all([
