@@ -92,10 +92,11 @@ export const BUCKET_LABEL: Record<WorkBucket, string> = {
 };
 
 export function useWorkItems() {
-  const { user } = useAuth();
+  const { user, isAdmin, profile } = useAuth();
+  const company = (profile?.company || '').trim().toLowerCase();
 
   return useQuery({
-    queryKey: ['work-items'],
+    queryKey: ['work-items', user?.id, isAdmin, company],
     enabled: !!user,
     queryFn: async (): Promise<WorkItem[]> => {
       const [projectsRes, clientsRes, stagesRes, itemsRes, ticketsRes, profilesRes] = await Promise.all([
@@ -176,7 +177,15 @@ export function useWorkItems() {
         return { ...base, bucket: computeBucket(base) };
       });
 
-      const all = [...projectItems, ...supportItems];
+      // Clientes veem apenas o trabalho da própria empresa (projetos permitidos pela RLS).
+      const scoped = [...projectItems, ...supportItems].filter(it => {
+        if (isAdmin) return true;
+        if (it.source === 'project') return !!it.projectId && projectMap.has(it.projectId);
+        if (it.projectId) return projectMap.has(it.projectId);
+        return !company || (it.clientName || '').trim().toLowerCase() === company;
+      });
+
+      const all = scoped;
       const rank = (w: WorkItem) => BUCKET_ORDER.indexOf(w.bucket);
       return all.sort((a, b) => {
         if (rank(a) !== rank(b)) return rank(a) - rank(b);
@@ -198,12 +207,24 @@ export function useWorkItemAction() {
       item,
       action,
       date,
+      endDate,
     }: {
       item: WorkItem;
       action: 'start' | 'complete' | 'reopen' | 'block' | 'schedule';
       date?: string;
+      endDate?: string;
     }) => {
       const now = new Date().toISOString();
+      // Conclusão segue a data de término planejada, quando existir.
+      const completionIso = (() => {
+        const d = item.dueDate;
+        if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) return new Date(`${d}T12:00:00`).toISOString();
+        if (d) {
+          const parsed = new Date(d);
+          if (!isNaN(parsed.getTime())) return parsed.toISOString();
+        }
+        return now;
+      })();
 
       if (item.source === 'project') {
         const updates: any = { updated_at: now };
@@ -214,16 +235,19 @@ export function useWorkItemAction() {
         } else if (action === 'complete') {
           updates.status = 'done';
           updates.is_completed = true;
-          updates.completed_at = now;
+          updates.completed_at = completionIso;
           if (!item.assigneeId) updates.assignee_id = user?.id ?? null;
         } else if (action === 'reopen') {
           updates.status = 'todo';
           updates.is_completed = false;
           updates.completed_at = null;
+          if (date) updates.start_date = date.slice(0, 10);
+          if (endDate) updates.end_date = endDate.slice(0, 10);
         } else if (action === 'block') {
           updates.status = 'review';
-        } else if (action === 'schedule' && date) {
-          updates.start_date = date.slice(0, 10);
+        } else if (action === 'schedule') {
+          if (date) updates.start_date = date.slice(0, 10);
+          if (endDate) updates.end_date = endDate.slice(0, 10);
         }
         const { error } = await (supabase as any)
           .from('project_stage_items')
@@ -239,15 +263,18 @@ export function useWorkItemAction() {
         } else if (action === 'complete') {
           updates.status = 'done';
           if (!item.startedAt) updates.start_at = now;
-          updates.end_at = now;
+          updates.end_at = item.dueDate ? completionIso : now;
           if (!item.assigneeId) updates.assignee_id = user?.id ?? null;
         } else if (action === 'reopen') {
           updates.status = 'todo';
           updates.end_at = null;
+          if (date) updates.start_at = new Date(`${date.slice(0, 10)}T09:00:00`).toISOString();
+          if (endDate) updates.end_at = new Date(`${endDate.slice(0, 10)}T18:00:00`).toISOString();
         } else if (action === 'block') {
           updates.status = 'review';
-        } else if (action === 'schedule' && date) {
-          updates.start_at = date;
+        } else if (action === 'schedule') {
+          if (date) updates.start_at = date;
+          if (endDate) updates.end_at = new Date(`${endDate.slice(0, 10)}T18:00:00`).toISOString();
         }
         const { error } = await (supabase as any)
           .from('support_tickets')

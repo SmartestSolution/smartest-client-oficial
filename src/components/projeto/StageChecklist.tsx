@@ -112,13 +112,26 @@ export function StageChecklist({ stageId, projectId, isAdmin, source = 'project'
     );
   };
 
-  const handleToggle = (itemId: string, currentState: boolean) => {
+  // A data de conclusão segue a data de término planejada do item (quando existir),
+  // para que projetos retroativos não apareçam concluídos "hoje".
+  const resolveCompletionDate = (endDate?: string | null) => {
+    if (endDate && /^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+      return new Date(`${endDate}T12:00:00`).toISOString();
+    }
+    if (endDate) {
+      const d = new Date(endDate);
+      if (!isNaN(d.getTime())) return d.toISOString();
+    }
+    return new Date().toISOString();
+  };
+
+  const handleToggle = (itemId: string, currentState: boolean, endDate?: string | null) => {
     const completing = !currentState;
     updateItem.mutate({
       id: itemId,
       updates: {
         is_completed: completing,
-        completed_at: completing ? new Date().toISOString() : null,
+        completed_at: completing ? resolveCompletionDate(endDate) : null,
         status: completing ? 'done' : 'todo',
         ...(completing && user?.id ? { assignee_id: user.id } : {}),
       } as any,
@@ -242,7 +255,7 @@ export function StageChecklist({ stageId, projectId, isAdmin, source = 'project'
             <div className="flex items-center gap-3">
               <Checkbox
                 checked={item.is_completed}
-                onCheckedChange={() => handleToggle(item.id, item.is_completed)}
+                onCheckedChange={() => handleToggle(item.id, item.is_completed, (item as any).end_date)}
                 disabled={!isAdmin}
               />
               <span className={cn(
