@@ -207,12 +207,24 @@ export function useWorkItemAction() {
       item,
       action,
       date,
+      endDate,
     }: {
       item: WorkItem;
       action: 'start' | 'complete' | 'reopen' | 'block' | 'schedule';
       date?: string;
+      endDate?: string;
     }) => {
       const now = new Date().toISOString();
+      // Conclusão segue a data de término planejada, quando existir.
+      const completionIso = (() => {
+        const d = item.dueDate;
+        if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) return new Date(`${d}T12:00:00`).toISOString();
+        if (d) {
+          const parsed = new Date(d);
+          if (!isNaN(parsed.getTime())) return parsed.toISOString();
+        }
+        return now;
+      })();
 
       if (item.source === 'project') {
         const updates: any = { updated_at: now };
@@ -223,16 +235,19 @@ export function useWorkItemAction() {
         } else if (action === 'complete') {
           updates.status = 'done';
           updates.is_completed = true;
-          updates.completed_at = now;
+          updates.completed_at = completionIso;
           if (!item.assigneeId) updates.assignee_id = user?.id ?? null;
         } else if (action === 'reopen') {
           updates.status = 'todo';
           updates.is_completed = false;
           updates.completed_at = null;
+          if (date) updates.start_date = date.slice(0, 10);
+          if (endDate) updates.end_date = endDate.slice(0, 10);
         } else if (action === 'block') {
           updates.status = 'review';
-        } else if (action === 'schedule' && date) {
-          updates.start_date = date.slice(0, 10);
+        } else if (action === 'schedule') {
+          if (date) updates.start_date = date.slice(0, 10);
+          if (endDate) updates.end_date = endDate.slice(0, 10);
         }
         const { error } = await (supabase as any)
           .from('project_stage_items')
