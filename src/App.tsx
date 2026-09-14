@@ -22,6 +22,7 @@ import NotFound from "./pages/NotFound";
 import ProjectSupport from "./pages/projeto/ProjectSupport";
 import GlobalTrainings from "./pages/GlobalTrainings";
 import Chat from "./pages/Chat";
+import WorkCenter from "./pages/WorkCenter";
 
 // Admin Pages
 import AdminClients from "./pages/admin/AdminClients";
@@ -59,6 +60,9 @@ const App = () => (
             } />
             <Route path="/perfil" element={
               <ProtectedRoute><ProfileSettings /></ProtectedRoute>
+            } />
+            <Route path="/central-de-trabalho" element={
+              <ProtectedRoute><WorkCenter /></ProtectedRoute>
             } />
             <Route path="/agenda" element={
               <ProtectedRoute><GlobalAgenda /></ProtectedRoute>
