@@ -177,7 +177,15 @@ export function useWorkItems() {
         return { ...base, bucket: computeBucket(base) };
       });
 
-      const all = [...projectItems, ...supportItems];
+      // Clientes veem apenas o trabalho da própria empresa (projetos permitidos pela RLS).
+      const scoped = [...projectItems, ...supportItems].filter(it => {
+        if (isAdmin) return true;
+        if (it.source === 'project') return !!it.projectId && projectMap.has(it.projectId);
+        if (it.projectId) return projectMap.has(it.projectId);
+        return !company || (it.clientName || '').trim().toLowerCase() === company;
+      });
+
+      const all = scoped;
       const rank = (w: WorkItem) => BUCKET_ORDER.indexOf(w.bucket);
       return all.sort((a, b) => {
         if (rank(a) !== rank(b)) return rank(a) - rank(b);
