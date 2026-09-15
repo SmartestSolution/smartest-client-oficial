@@ -80,12 +80,20 @@ Deno.serve(async (req) => {
 
     const userId = userData.user.id
 
+    // Buscar nome da empresa para preencher profiles.company
+    const { data: clientData } = await supabaseAdmin
+      .from('clients')
+      .select('name')
+      .eq('id', clientId)
+      .maybeSingle()
+
     // Create profile
     await supabaseAdmin
       .from('profiles')
       .insert({
         user_id: userId,
-        full_name: fullName
+        full_name: fullName,
+        company: clientData?.name ?? null
       })
 
     // Create user role (client)
