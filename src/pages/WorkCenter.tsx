@@ -13,6 +13,15 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import {
   useWorkItems,
@@ -77,6 +86,9 @@ export default function WorkCenter() {
   const [project, setProject] = useState('all');
   const [priority, setPriority] = useState('all');
   const [status, setStatus] = useState('open');
+  const [reopenItem, setReopenItem] = useState<WorkItem | null>(null);
+  const [reopenStart, setReopenStart] = useState('');
+  const [reopenEnd, setReopenEnd] = useState('');
 
   const clients = useMemo(
     () => [...new Set((items || []).map(i => i.clientName).filter(Boolean) as string[])].sort(),
@@ -138,6 +150,31 @@ export default function WorkCenter() {
                     ? 'Atividade agendada'
                     : 'Atividade reaberta',
           }),
+        onError: (e: any) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
+      },
+    );
+  };
+
+  const openReopen = (item: WorkItem) => {
+    setReopenItem(item);
+    const today = new Date().toISOString().slice(0, 10);
+    setReopenStart((item.plannedDate || today).slice(0, 10));
+    setReopenEnd((item.dueDate || '').slice(0, 10));
+  };
+
+  const confirmReopen = () => {
+    if (!reopenItem) return;
+    if (reopenEnd && reopenStart && reopenEnd < reopenStart) {
+      toast({ title: 'Datas inválidas', description: 'A data final não pode ser anterior ao início.', variant: 'destructive' });
+      return;
+    }
+    action.mutate(
+      { item: reopenItem, action: 'reopen', date: reopenStart || undefined, endDate: reopenEnd || undefined },
+      {
+        onSuccess: () => {
+          toast({ title: 'Atividade reaberta e reagendada' });
+          setReopenItem(null);
+        },
         onError: (e: any) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
       },
     );
@@ -321,7 +358,7 @@ export default function WorkCenter() {
                               </Button>
                             </>
                           ) : (
-                            <Button size="sm" variant="outline" onClick={() => run(item, 'reopen')}>
+                            <Button size="sm" variant="outline" onClick={() => openReopen(item)}>
                               <RotateCcw className="mr-1 h-3.5 w-3.5" /> Reabrir
                             </Button>
                           )}
@@ -338,6 +375,29 @@ export default function WorkCenter() {
           </div>
         )}
       </div>
+
+      <Dialog open={!!reopenItem} onOpenChange={open => !open && setReopenItem(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reabrir e reagendar</DialogTitle>
+            <DialogDescription>{reopenItem?.title}</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="reopen-start">Início</Label>
+              <Input id="reopen-start" type="date" value={reopenStart} onChange={e => setReopenStart(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reopen-end">Prazo final</Label>
+              <Input id="reopen-end" type="date" min={reopenStart || undefined} value={reopenEnd} onChange={e => setReopenEnd(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReopenItem(null)}>Cancelar</Button>
+            <Button onClick={confirmReopen} disabled={action.isPending}>Reabrir</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
