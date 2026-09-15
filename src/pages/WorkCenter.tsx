@@ -77,6 +77,9 @@ export default function WorkCenter() {
   const [project, setProject] = useState('all');
   const [priority, setPriority] = useState('all');
   const [status, setStatus] = useState('open');
+  const [reopenItem, setReopenItem] = useState<WorkItem | null>(null);
+  const [reopenStart, setReopenStart] = useState('');
+  const [reopenEnd, setReopenEnd] = useState('');
 
   const clients = useMemo(
     () => [...new Set((items || []).map(i => i.clientName).filter(Boolean) as string[])].sort(),
