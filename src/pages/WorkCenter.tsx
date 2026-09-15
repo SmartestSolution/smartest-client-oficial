@@ -143,6 +143,31 @@ export default function WorkCenter() {
     );
   };
 
+  const openReopen = (item: WorkItem) => {
+    setReopenItem(item);
+    const today = new Date().toISOString().slice(0, 10);
+    setReopenStart((item.plannedDate || today).slice(0, 10));
+    setReopenEnd((item.dueDate || '').slice(0, 10));
+  };
+
+  const confirmReopen = () => {
+    if (!reopenItem) return;
+    if (reopenEnd && reopenStart && reopenEnd < reopenStart) {
+      toast({ title: 'Datas inválidas', description: 'A data final não pode ser anterior ao início.', variant: 'destructive' });
+      return;
+    }
+    action.mutate(
+      { item: reopenItem, action: 'reopen', date: reopenStart || undefined, endDate: reopenEnd || undefined },
+      {
+        onSuccess: () => {
+          toast({ title: 'Atividade reaberta e reagendada' });
+          setReopenItem(null);
+        },
+        onError: (e: any) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
+      },
+    );
+  };
+
   const scheduleTomorrow = (item: WorkItem) => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
