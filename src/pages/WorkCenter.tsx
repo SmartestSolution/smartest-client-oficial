@@ -349,7 +349,7 @@ export default function WorkCenter() {
                               </Button>
                             </>
                           ) : (
-                            <Button size="sm" variant="outline" onClick={() => run(item, 'reopen')}>
+                            <Button size="sm" variant="outline" onClick={() => openReopen(item)}>
                               <RotateCcw className="mr-1 h-3.5 w-3.5" /> Reabrir
                             </Button>
                           )}
