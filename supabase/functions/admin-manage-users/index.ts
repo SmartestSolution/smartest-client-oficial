@@ -33,28 +33,50 @@ Deno.serve(async (req) => {
     const { action } = body
 
     if (action === 'list') {
-      // v3 - retorna client_id + project_ids (força redeploy)
+      // v4 - retorna client_id + project_ids e autocorrige profiles.company a partir de client_users
       const { data: usersData, error: listErr } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 })
       if (listErr) return json({ error: listErr.message }, 400)
 
       const userIds = usersData.users.map(u => u.id)
-      const [profRes, rolRes, puRes, cuRes] = await Promise.all([
+      const [profRes, rolRes, puRes, cuRes, clRes] = await Promise.all([
         supabaseAdmin.from('profiles').select('user_id, full_name, company').in('user_id', userIds),
         supabaseAdmin.from('user_roles').select('user_id, role').in('user_id', userIds),
         supabaseAdmin.from('project_users').select('user_id, project_id').in('user_id', userIds),
         supabaseAdmin.from('client_users').select('user_id, client_id').in('user_id', userIds),
+        supabaseAdmin.from('clients').select('id, name'),
       ])
       const profiles = profRes.data || []
       const roles = rolRes.data || []
       const projectUsers = puRes.data || []
       const clientUsers = cuRes.data || []
+      const clients = clRes.data || []
+      const clientNameById = new Map(clients.map(c => [c.id, c.name]))
+
+      // Autocorreção: se o profile está sem empresa mas o usuário está vinculado
+      // a uma empresa em client_users, grava clients.name em profiles.company.
+      const fixes: Promise<unknown>[] = []
+      const companyByUser = new Map<string, string | null>()
+      for (const u of usersData.users) {
+        const profile = profiles.find(p => p.user_id === u.id)
+        const link = clientUsers.find(cu => cu.user_id === u.id)
+        const linkedName = link ? clientNameById.get(link.client_id) ?? null : null
+        let company = profile?.company || null
+        if (!company && linkedName) {
+          company = linkedName
+          fixes.push(
+            supabaseAdmin.from('profiles').update({ company: linkedName }).eq('user_id', u.id)
+          )
+        }
+        companyByUser.set(u.id, company)
+      }
+      if (fixes.length > 0) await Promise.all(fixes)
 
       const users = usersData.users.map(u => ({
         id: u.id,
         email: u.email,
         created_at: u.created_at,
         full_name: profiles.find(p => p.user_id === u.id)?.full_name || '',
-        company: profiles.find(p => p.user_id === u.id)?.company || null,
+        company: companyByUser.get(u.id) || null,
         role: roles.find(r => r.user_id === u.id)?.role || 'client',
         project_ids: projectUsers.filter(pu => pu.user_id === u.id).map(pu => pu.project_id),
         client_id: clientUsers.find(cu => cu.user_id === u.id)?.client_id || null,
