@@ -366,6 +366,29 @@ export default function WorkCenter() {
           </div>
         )}
       </div>
+
+      <Dialog open={!!reopenItem} onOpenChange={open => !open && setReopenItem(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reabrir e reagendar</DialogTitle>
+            <DialogDescription>{reopenItem?.title}</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="reopen-start">Início</Label>
+              <Input id="reopen-start" type="date" value={reopenStart} onChange={e => setReopenStart(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reopen-end">Prazo final</Label>
+              <Input id="reopen-end" type="date" min={reopenStart || undefined} value={reopenEnd} onChange={e => setReopenEnd(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReopenItem(null)}>Cancelar</Button>
+            <Button onClick={confirmReopen} disabled={action.isPending}>Reabrir</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
