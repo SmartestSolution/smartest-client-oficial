@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useProjectStages, useUpdateProjectStage, useCreateDefaultStages, ProjectStage } from '@/hooks/useProjectStages';
+import { useProjectStages, useUpdateProjectStage, useCreateDefaultStages, useCreateProjectStage, useDeleteProjectStage, ProjectStage } from '@/hooks/useProjectStages';
 import { useProject } from '@/hooks/useProjects';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,6 +25,7 @@ import {
   CheckCircle2,
   Clock,
   Circle
+  , Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ProjectProgressTimeline } from '@/components/projeto/ProjectProgressTimeline';
@@ -63,6 +64,9 @@ export default function AdminProjectStages() {
   const { data: stages, isLoading } = useProjectStages(projectId);
   const updateStage = useUpdateProjectStage();
   const createDefaults = useCreateDefaultStages();
+  const createStage = useCreateProjectStage();
+  const deleteStage = useDeleteProjectStage();
+  const [newStageName, setNewStageName] = useState('');
   const [editingNotes, setEditingNotes] = useState<Record<string, string>>({});
   const [editingDates, setEditingDates] = useState<Record<string, { started_at?: string; completed_at?: string }>>({});
 
@@ -141,6 +145,17 @@ export default function AdminProjectStages() {
     });
   };
 
+  const handleCreateStage = () => {
+    if (!projectId || !newStageName.trim()) return;
+    createStage.mutate(
+      { projectId, stageName: newStageName, orderIndex: stages?.length || 0 },
+      {
+        onSuccess: () => { setNewStageName(''); toast.success('Etapa adicionada!'); },
+        onError: (err: Error) => toast.error('Erro: ' + err.message),
+      },
+    );
+  };
+
   const getDateValue = (stage: ProjectStage, field: 'started_at' | 'completed_at') => {
     const edited = editingDates[stage.id]?.[field];
     if (edited !== undefined) return edited;
@@ -195,7 +210,22 @@ export default function AdminProjectStages() {
                   )}
                 </CardDescription>
               </div>
-              {stages && stages.length === 0 && (
+              {project?.project_mode === 'custom' ? (
+                <div className="flex items-center gap-2">
+                  <Input
+                    className="h-9 w-56"
+                    maxLength={120}
+                    placeholder="Nome da nova etapa"
+                    value={newStageName}
+                    onChange={(event) => setNewStageName(event.target.value)}
+                    onKeyDown={(event) => { if (event.key === 'Enter') handleCreateStage(); }}
+                  />
+                  <Button onClick={handleCreateStage} disabled={!newStageName.trim() || createStage.isPending}>
+                    {createStage.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
+                    Adicionar etapa
+                  </Button>
+                </div>
+              ) : stages && stages.length === 0 && (
                 <Button onClick={handleCreateDefaults} disabled={createDefaults.isPending}>
                   {createDefaults.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   <Plus className="h-4 w-4 mr-2" />
@@ -222,13 +252,24 @@ export default function AdminProjectStages() {
                 updatePending={updateStage.isPending}
                 minDate={projectStart}
                 maxDate={projectEnd}
+                canDelete={project?.project_mode === 'custom'}
+                onDelete={(stage: ProjectStage) => {
+                  if (confirm(`Excluir a etapa "${stage.stage_name}" e todas as tarefas dela?`)) {
+                    deleteStage.mutate(stage.id, {
+                      onSuccess: () => toast.success('Etapa removida!'),
+                      onError: (err: Error) => toast.error('Erro: ' + err.message),
+                    });
+                  }
+                }}
               />
             ) : (
               <div className="flex flex-col items-center justify-center py-12">
                 <BarChart3 className="h-12 w-12 text-muted-foreground/50 mb-4" />
                 <h3 className="text-lg font-medium">Nenhuma etapa cadastrada</h3>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Clique em "Criar Etapas Padrão" para iniciar.
+                  {project?.project_mode === 'custom'
+                    ? 'Adicione a primeira etapa usando o campo acima.'
+                    : 'Clique em "Criar Etapas Padrão" para iniciar.'}
                 </p>
               </div>
             )}
@@ -239,7 +280,7 @@ export default function AdminProjectStages() {
   );
 }
 
-function StagesTable({ stages, editingNotes, setEditingNotes, editingDates, getDateValue, setDateField, handleSaveNotes, handleSaveDates, updatePending, minDate, maxDate }: any) {
+function StagesTable({ stages, editingNotes, setEditingNotes, editingDates, getDateValue, setDateField, handleSaveNotes, handleSaveDates, updatePending, minDate, maxDate, canDelete, onDelete }: any) {
   return (
     <Table>
       <TableHeader>
@@ -295,6 +336,7 @@ function StagesTable({ stages, editingNotes, setEditingNotes, editingDates, getD
               />
             </TableCell>
             <TableCell>
+              <div className="flex items-center justify-end gap-1">
               {(editingNotes[stage.id] !== undefined || editingDates[stage.id] !== undefined) && (
                 <Button
                   variant="ghost"
@@ -308,6 +350,12 @@ function StagesTable({ stages, editingNotes, setEditingNotes, editingDates, getD
                   <Save className="h-4 w-4" />
                 </Button>
               )}
+              {canDelete && (
+                <Button variant="ghost" size="icon" onClick={() => onDelete(stage)}>
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              )}
+              </div>
             </TableCell>
           </TableRow>
         ))}

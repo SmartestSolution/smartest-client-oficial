@@ -499,6 +499,7 @@ export default function AdminClientProjects() {
                         <Checkbox
                           id="end_date_indeterminate"
                           checked={formData.end_date_indeterminate}
+                          disabled={formData.project_mode !== 'custom'}
                           onCheckedChange={(checked) =>
                             setFormData({
                               ...formData,
@@ -508,7 +509,7 @@ export default function AdminClientProjects() {
                           }
                         />
                         <Label htmlFor="end_date_indeterminate" className="text-xs font-normal cursor-pointer">
-                          Indeterminado
+                          Indeterminado (somente personalizado)
                         </Label>
                       </div>
                     </div>
@@ -548,7 +549,8 @@ export default function AdminClientProjects() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Nome</TableHead>
-                    <TableHead>Tipo</TableHead>
+                    <TableHead>Modalidade</TableHead>
+                    <TableHead>Categoria</TableHead>
                     <TableHead>Descrição</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Criado em</TableHead>
@@ -559,6 +561,11 @@ export default function AdminClientProjects() {
                   {projects.map((project) => (
                     <TableRow key={project.id}>
                       <TableCell className="font-medium">{project.name}</TableCell>
+                      <TableCell>
+                        <span className="text-xs px-2 py-1 rounded-full font-medium bg-muted text-foreground">
+                          {PROJECT_MODE_LABELS[project.project_mode || 'standard']}
+                        </span>
+                      </TableCell>
                       <TableCell>
                         <span className={`text-xs px-2 py-1 rounded-full font-medium ${
                           project.project_type === 'automation'
