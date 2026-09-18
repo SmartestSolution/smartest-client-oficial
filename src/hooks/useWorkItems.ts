@@ -92,11 +92,10 @@ export const BUCKET_LABEL: Record<WorkBucket, string> = {
 };
 
 export function useWorkItems() {
-  const { user, isAdmin, profile } = useAuth();
-  const company = (profile?.company || '').trim().toLowerCase();
+  const { user, isAdmin } = useAuth();
 
   return useQuery({
-    queryKey: ['work-items', user?.id, isAdmin, company],
+    queryKey: ['work-items', user?.id, isAdmin],
     enabled: !!user,
     queryFn: async (): Promise<WorkItem[]> => {
       const [projectsRes, clientsRes, stagesRes, itemsRes, ticketsRes, profilesRes] = await Promise.all([
@@ -177,15 +176,8 @@ export function useWorkItems() {
         return { ...base, bucket: computeBucket(base) };
       });
 
-      // Clientes veem apenas o trabalho da própria empresa (projetos permitidos pela RLS).
-      const scoped = [...projectItems, ...supportItems].filter(it => {
-        if (isAdmin) return true;
-        if (it.source === 'project') return !!it.projectId && projectMap.has(it.projectId);
-        if (it.projectId) return projectMap.has(it.projectId);
-        return !company || (it.clientName || '').trim().toLowerCase() === company;
-      });
-
-      const all = scoped;
+      // As políticas do banco devolvem somente atividades permitidas para o usuário.
+      const all = [...projectItems, ...supportItems];
       const rank = (w: WorkItem) => BUCKET_ORDER.indexOf(w.bucket);
       return all.sort((a, b) => {
         if (rank(a) !== rank(b)) return rank(a) - rank(b);
