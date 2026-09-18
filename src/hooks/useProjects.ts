@@ -11,6 +11,7 @@ export interface Project {
   updated_at: string;
   start_date: string | null;
   end_date: string | null;
+  project_mode?: 'standard' | 'retroactive' | 'custom';
 }
 
 export function useProjects() {
