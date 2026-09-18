@@ -204,7 +204,7 @@ export default function AdminClientProjects() {
       queryClient.invalidateQueries({ queryKey: ['client-projects', clientId] });
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['project-stages'] });
-      toast.success(dataLabelForToast.current || 'Projeto criado com sucesso!');
+      toast.success('Projeto criado com sucesso!');
       handleClose();
     },
     onError: (error: Error) => {
@@ -324,105 +324,9 @@ export default function AdminClientProjects() {
             </div>
             <h1 className="text-2xl font-bold text-foreground">Projetos</h1>
           </div>
-          <Dialog open={isTemplateOpen} onOpenChange={(o) => { setIsTemplateOpen(o); if (!o) setTemplateData({ name: '', start_date: '', end_date: '' }); }}>
-            <DialogTrigger asChild>
-              <Button variant="outline">
-                <Plus className="h-4 w-4 mr-2" />
-                Projeto Padrão
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Novo Projeto Padrão</DialogTitle>
-                <DialogDescription>
-                  Cria o projeto já com todas as etapas e tarefas padrão preenchidas.
-                </DialogDescription>
-              </DialogHeader>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (!templateData.name.trim()) {
-                    toast.error('Nome do projeto é obrigatório');
-                    return;
-                  }
-                  createMutation.mutate({
-                    name: templateData.name,
-                    description: '',
-                    status: 'active',
-                    project_type: 'bi',
-                    start_date: templateData.start_date,
-                    end_date: templateData.end_date,
-                    end_date_indeterminate: false,
-                    retroactive: !!templateData.retroactive,
-                  });
-                }}
-              >
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="tpl-name">Nome do Projeto *</Label>
-                    <Input
-                      id="tpl-name"
-                      value={templateData.name}
-                      onChange={(e) => setTemplateData({ ...templateData, name: e.target.value })}
-                      placeholder="Ex: Dashboard Comercial"
-                      required
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="tpl-start">Data de Início</Label>
-                      <Input
-                        id="tpl-start"
-                        type="date"
-                        value={templateData.start_date}
-                        onChange={(e) => setTemplateData({ ...templateData, start_date: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="tpl-end">Data de Término</Label>
-                      <Input
-                        id="tpl-end"
-                        type="date"
-                        min={templateData.start_date || undefined}
-                        value={templateData.end_date}
-                        onChange={(e) => setTemplateData({ ...templateData, end_date: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                  <label className="flex items-start gap-3 rounded-lg border p-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="mt-1 h-4 w-4 accent-primary"
-                      checked={!!templateData.retroactive}
-                      onChange={(e) => setTemplateData({ ...templateData, retroactive: e.target.checked })}
-                    />
-                    <span>
-                      <span className="text-sm font-medium block">Projeto retroativo (já concluído)</span>
-                      <span className="text-xs text-muted-foreground">
-                        Marca todas as etapas e tarefas como concluídas dentro do prazo planejado, sem atraso.
-                      </span>
-                    </span>
-                  </label>
-                  <p className="text-xs text-muted-foreground">
-                    Etapas incluídas: {DEFAULT_PROJECT_TEMPLATE.map((s) => s.stage).join(' • ')}
-                  </p>
-
-                </div>
-                <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setIsTemplateOpen(false)}>
-                    Cancelar
-                  </Button>
-                  <Button type="submit" disabled={createMutation.isPending}>
-                    {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                    Criar Projeto Padrão
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
-              <Button onClick={() => { setEditingProject(null); setFormData({ name: '', description: '', status: 'active', project_type: 'bi', start_date: '', end_date: '', end_date_indeterminate: false }); }}>
+              <Button onClick={() => { setEditingProject(null); setFormData({ name: '', description: '', status: 'active', project_type: 'bi', project_mode: 'standard', start_date: '', end_date: '', end_date_indeterminate: false }); }}>
                 <Plus className="h-4 w-4 mr-2" />
                 Novo Projeto
               </Button>
@@ -440,6 +344,34 @@ export default function AdminClientProjects() {
               </DialogHeader>
               <form onSubmit={handleSubmit}>
                 <div className="space-y-4 py-4">
+                  {!editingProject && (
+                    <div className="space-y-2">
+                      <Label htmlFor="project_mode">Modalidade *</Label>
+                      <Select
+                        value={formData.project_mode}
+                        onValueChange={(value) => setFormData({
+                          ...formData,
+                          project_mode: value as 'standard' | 'retroactive' | 'custom',
+                          status: value === 'retroactive' ? 'completed' : 'active',
+                          end_date_indeterminate: false,
+                        })}
+                      >
+                        <SelectTrigger id="project_mode"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="standard">Projeto Padrão</SelectItem>
+                          <SelectItem value="retroactive">Projeto Retroativo</SelectItem>
+                          <SelectItem value="custom">Projeto Personalizado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        {formData.project_mode === 'custom'
+                          ? 'Criado sem etapas e tarefas para você montar manualmente.'
+                          : formData.project_mode === 'retroactive'
+                            ? 'Recebe todas as etapas e tarefas já concluídas nas datas planejadas.'
+                            : `Recebe automaticamente: ${DEFAULT_PROJECT_TEMPLATE.map((stage) => stage.stage).join(' • ')}.`}
+                      </p>
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <Label htmlFor="name">Nome do Projeto *</Label>
                     <Input
@@ -459,7 +391,7 @@ export default function AdminClientProjects() {
                       rows={3}
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="project_type">Tipo do Projeto *</Label>
                       <Select
@@ -480,6 +412,7 @@ export default function AdminClientProjects() {
                       <Label htmlFor="status">Status</Label>
                       <Select
                         value={formData.status}
+                        disabled={!editingProject && formData.project_mode === 'retroactive'}
                         onValueChange={(value) => {
                           const today = new Date().toISOString().slice(0, 10);
                           setFormData({
@@ -502,7 +435,7 @@ export default function AdminClientProjects() {
                       </Select>
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="start_date">Data de Início</Label>
                       <Input
