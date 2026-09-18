@@ -1,0 +1,3 @@
+- [ ] Liberar a Central de Trabalho para clientes com isolamento por empresa.
+- [ ] Permitir que clientes apenas solicitem prioridade: urgente, alta, média ou baixa.
+- [ ] Manter início, conclusão, agendamento e reabertura exclusivos para administradores.
