@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -78,6 +78,7 @@ const PROJECT_MODE_LABELS: Record<string, string> = {
 
 export default function AdminClientProjects() {
   const { clientId } = useParams<{ clientId: string }>();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
@@ -198,14 +199,15 @@ export default function AdminClientProjects() {
           if (itemsError) throw itemsError;
         }
       }
-
+      return { projectId, mode: data.project_mode };
     },
-    onSuccess: () => {
+    onSuccess: ({ projectId, mode }) => {
       queryClient.invalidateQueries({ queryKey: ['client-projects', clientId] });
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['project-stages'] });
       toast.success('Projeto criado com sucesso!');
       handleClose();
+      if (mode === 'custom' && projectId) navigate(`/admin/projetos/${projectId}/etapas`);
     },
     onError: (error: Error) => {
       toast.error('Erro ao criar projeto: ' + error.message);
