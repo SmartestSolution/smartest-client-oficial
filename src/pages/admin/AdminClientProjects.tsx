@@ -393,7 +393,7 @@ export default function AdminClientProjects() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="project_type">Tipo do Projeto *</Label>
+                      <Label htmlFor="project_type">Categoria *</Label>
                       <Select
                         value={formData.project_type}
                         onValueChange={(value) => setFormData({ ...formData, project_type: value as 'bi' | 'automation' | 'sql' })}

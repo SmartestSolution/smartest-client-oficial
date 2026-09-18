@@ -24,8 +24,9 @@ import {
   Save,
   CheckCircle2,
   Clock,
-  Circle
-  , Trash2
+  Circle,
+  Trash2,
+  ListChecks,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ProjectProgressTimeline } from '@/components/projeto/ProjectProgressTimeline';
@@ -195,7 +196,7 @@ export default function AdminProjectStages() {
 
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <BarChart3 className="h-5 w-5" />
@@ -210,28 +211,38 @@ export default function AdminProjectStages() {
                   )}
                 </CardDescription>
               </div>
-              {project?.project_mode === 'custom' ? (
-                <div className="flex items-center gap-2">
-                  <Input
-                    className="h-9 w-56"
-                    maxLength={120}
-                    placeholder="Nome da nova etapa"
-                    value={newStageName}
-                    onChange={(event) => setNewStageName(event.target.value)}
-                    onKeyDown={(event) => { if (event.key === 'Enter') handleCreateStage(); }}
-                  />
-                  <Button onClick={handleCreateStage} disabled={!newStageName.trim() || createStage.isPending}>
-                    {createStage.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
-                    Adicionar etapa
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                {projectId && stages && stages.length > 0 && (
+                  <Button variant="outline" asChild>
+                    <Link to={`/projeto/${projectId}/progresso`}>
+                      <ListChecks className="h-4 w-4 mr-2" />
+                      Gerenciar tarefas
+                    </Link>
                   </Button>
-                </div>
-              ) : stages && stages.length === 0 && (
-                <Button onClick={handleCreateDefaults} disabled={createDefaults.isPending}>
-                  {createDefaults.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  <Plus className="h-4 w-4 mr-2" />
-                  Criar Etapas Padrão
-                </Button>
-              )}
+                )}
+                {project?.project_mode === 'custom' ? (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      className="h-9 min-w-0 sm:w-56"
+                      maxLength={120}
+                      placeholder="Nome da nova etapa"
+                      value={newStageName}
+                      onChange={(event) => setNewStageName(event.target.value)}
+                      onKeyDown={(event) => { if (event.key === 'Enter') handleCreateStage(); }}
+                    />
+                    <Button onClick={handleCreateStage} disabled={!newStageName.trim() || createStage.isPending}>
+                      {createStage.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
+                      Adicionar etapa
+                    </Button>
+                  </div>
+                ) : stages && stages.length === 0 && (
+                  <Button onClick={handleCreateDefaults} disabled={createDefaults.isPending}>
+                    {createDefaults.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    <Plus className="h-4 w-4 mr-2" />
+                    Criar Etapas Padrão
+                  </Button>
+                )}
+              </div>
             </div>
           </CardHeader>
           <CardContent>
