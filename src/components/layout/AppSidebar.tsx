@@ -267,6 +267,14 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={location.pathname === '/admin/projetos'}>
+                    <NavLink to="/admin/projetos" className="flex items-center gap-3">
+                      <FolderKanban className="h-4 w-4" />
+                      {!collapsed && <span>Projetos</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
                   <SidebarMenuButton asChild isActive={location.pathname === '/admin/treinamentos'}>
                     <NavLink to="/admin/treinamentos" className="flex items-center gap-3">
                       <GraduationCap className="h-4 w-4" />
