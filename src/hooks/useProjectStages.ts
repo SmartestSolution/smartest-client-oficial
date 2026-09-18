@@ -51,6 +51,38 @@ export function useUpdateProjectStage() {
   });
 }
 
+export function useCreateProjectStage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ projectId, stageName, orderIndex }: { projectId: string; stageName: string; orderIndex: number }) => {
+      const name = stageName.trim();
+      if (!name || name.length > 120) throw new Error('Informe um nome de etapa com até 120 caracteres.');
+      const { error } = await (supabase as any)
+        .from('project_stages')
+        .insert({ project_id: projectId, stage_name: name, order_index: orderIndex, status: 'pending' });
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['project-stages'] }),
+  });
+}
+
+export function useDeleteProjectStage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any).from('project_stages').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['project-stages'] });
+      queryClient.invalidateQueries({ queryKey: ['project-stage-items'] });
+      queryClient.invalidateQueries({ queryKey: ['all-stage-items'] });
+    },
+  });
+}
+
 export const DEFAULT_PROJECT_TEMPLATE: { stage: string; weight: number; items: string[] }[] = [
   {
     stage: 'Levantamento',

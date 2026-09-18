@@ -58,6 +58,7 @@ interface Project {
   description: string | null;
   status: string | null;
   project_type: 'bi' | 'automation' | 'sql' | null;
+  project_mode: 'standard' | 'retroactive' | 'custom' | null;
   start_date: string | null;
   end_date: string | null;
   created_at: string;
@@ -69,33 +70,35 @@ const PROJECT_TYPE_LABELS: Record<string, string> = {
   sql: 'SQL',
 };
 
+const PROJECT_MODE_LABELS: Record<string, string> = {
+  standard: 'Padrão',
+  retroactive: 'Retroativo',
+  custom: 'Personalizado',
+};
+
 export default function AdminClientProjects() {
   const { clientId } = useParams<{ clientId: string }>();
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
-  const [isTemplateOpen, setIsTemplateOpen] = useState(false);
-  const [templateData, setTemplateData] = useState<{
-    name: string; start_date: string; end_date: string; retroactive?: boolean;
-  }>({ name: '', start_date: '', end_date: '', retroactive: false });
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [formData, setFormData] = useState<{
     name: string;
     description: string;
     status: string;
     project_type: 'bi' | 'automation' | 'sql';
+    project_mode: 'standard' | 'retroactive' | 'custom';
     start_date: string;
     end_date: string;
     end_date_indeterminate: boolean;
-    retroactive?: boolean;
   }>({
     name: '',
     description: '',
     status: 'active',
     project_type: 'bi',
+    project_mode: 'standard',
     start_date: '',
     end_date: '',
     end_date_indeterminate: false,
-    retroactive: false,
   });
 
   const { data: client } = useQuery({
@@ -130,7 +133,7 @@ export default function AdminClientProjects() {
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const retro = !!data.retroactive;
+      const retro = data.project_mode === 'retroactive';
       const { data: created, error } = await supabase
         .from('projects')
         .insert({
@@ -139,6 +142,7 @@ export default function AdminClientProjects() {
           description: data.description || null,
           status: retro ? 'completed' : data.status,
           project_type: data.project_type,
+          project_mode: data.project_mode,
           start_date: data.start_date || null,
           end_date: data.end_date || null,
         } as any)
@@ -147,9 +151,9 @@ export default function AdminClientProjects() {
       
       if (error) throw error;
 
-      // Aplica o projeto padrão (etapas + tarefas) com datas proporcionais
+      // Padrão e retroativo recebem o modelo; personalizado nasce vazio.
       const projectId = (created as any)?.id;
-      if (projectId) {
+      if (projectId && data.project_mode !== 'custom') {
         const schedule = buildTemplateSchedule(data.start_date, data.end_date);
         const iso = (d?: string | null) => (d ? new Date(`${d}T12:00:00Z`).toISOString() : null);
 
@@ -200,7 +204,7 @@ export default function AdminClientProjects() {
       queryClient.invalidateQueries({ queryKey: ['client-projects', clientId] });
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['project-stages'] });
-      toast.success('Projeto criado com as etapas padrão!');
+      toast.success(dataLabelForToast.current || 'Projeto criado com sucesso!');
       handleClose();
     },
     onError: (error: Error) => {
@@ -217,6 +221,7 @@ export default function AdminClientProjects() {
           description: data.description || null,
           status: data.status,
           project_type: data.project_type,
+          project_mode: data.project_mode,
           start_date: data.start_date || null,
           end_date: data.end_date || null,
         } as any)
@@ -256,10 +261,8 @@ export default function AdminClientProjects() {
 
   const handleClose = () => {
     setIsOpen(false);
-    setIsTemplateOpen(false);
-    setTemplateData({ name: '', start_date: '', end_date: '' });
     setEditingProject(null);
-    setFormData({ name: '', description: '', status: 'active', project_type: 'bi', start_date: '', end_date: '', end_date_indeterminate: false });
+    setFormData({ name: '', description: '', status: 'active', project_type: 'bi', project_mode: 'standard', start_date: '', end_date: '', end_date_indeterminate: false });
   };
 
   const handleEdit = (project: Project) => {
@@ -269,6 +272,7 @@ export default function AdminClientProjects() {
       description: project.description || '',
       status: project.status || 'active',
       project_type: (project.project_type as 'bi' | 'automation' | 'sql') || 'bi',
+      project_mode: project.project_mode || 'standard',
       start_date: project.start_date || '',
       end_date: project.end_date || '',
       end_date_indeterminate: !project.end_date && !!project.start_date,
@@ -280,6 +284,18 @@ export default function AdminClientProjects() {
     e.preventDefault();
     if (!formData.name.trim()) {
       toast.error('Nome do projeto é obrigatório');
+      return;
+    }
+    if (formData.start_date && formData.end_date && formData.end_date < formData.start_date) {
+      toast.error('A data final não pode ser anterior à data inicial');
+      return;
+    }
+    if (!editingProject && formData.project_mode !== 'custom' && (!formData.start_date || !formData.end_date)) {
+      toast.error('Informe as datas de início e término para distribuir as etapas');
+      return;
+    }
+    if (!editingProject && formData.project_mode === 'retroactive' && formData.end_date > new Date().toISOString().slice(0, 10)) {
+      toast.error('O projeto retroativo deve terminar no passado ou hoje');
       return;
     }
 
