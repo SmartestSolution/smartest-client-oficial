@@ -7,7 +7,7 @@ Permitir que clientes acessem a Central de Trabalho e acompanhem todas as tarefa
 - Manter a Central de Trabalho disponível no menu principal para administradores e clientes.
 - Para clientes, remover o filtro de empresa e identificar a fila como pertencente à empresa do usuário.
 - Consolidar tarefas de projeto e chamados de suporte dos projetos permitidos para a empresa.
-- Permitir que clientes iniciem, concluam, agendem e reabram tarefas acessíveis pela Central.
+- Permitir que clientes apenas solicitem a prioridade das tarefas entre urgente, alta, média e baixa; iniciar, concluir, agendar e reabrir permanecem exclusivos dos administradores.
 - Adicionar regras de segurança no banco para leitura e atualização somente quando o usuário tiver acesso ao projeto; chamados globais serão limitados a usuários da mesma empresa.
 - Preservar a visão global para administradores.
 
