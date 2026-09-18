@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useProject } from '@/hooks/useProjects';
 import { useProjectStages } from '@/hooks/useProjectStages';
@@ -41,6 +41,16 @@ export default function ProjectProgress() {
   const [expandedStage, setExpandedStage] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('table');
 
+  const isCustomProject = project?.project_mode === 'custom';
+  const customStagesWithSchedule = (stages || []).filter(
+    (stage) => Boolean(stage.started_at && stage.completed_at)
+  );
+  const ganttAvailable = !isCustomProject || customStagesWithSchedule.length > 0;
+
+  useEffect(() => {
+    if (!ganttAvailable && viewMode === 'gantt') setViewMode('table');
+  }, [ganttAvailable, viewMode]);
+
   const progressPercent = allItems && allItems.totalItems > 0 
     ? Math.round((allItems.completedItems / allItems.totalItems) * 100) 
     : 0;
@@ -72,15 +82,17 @@ export default function ProjectProgress() {
               <TableIcon className="h-4 w-4" />
               Tabela
             </Button>
-            <Button
-              variant={viewMode === 'gantt' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('gantt')}
-              className="gap-1.5"
-            >
-              <BarChart3 className="h-4 w-4" />
-              Gantt
-            </Button>
+            {ganttAvailable && (
+              <Button
+                variant={viewMode === 'gantt' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('gantt')}
+                className="gap-1.5"
+              >
+                <BarChart3 className="h-4 w-4" />
+                Gantt
+              </Button>
+            )}
           </div>
         </div>
 
@@ -124,11 +136,15 @@ export default function ProjectProgress() {
               stages={stages}
               expandedStage={expandedStage}
               setExpandedStage={setExpandedStage}
-              projectId={id!}
+              projectId={id || ''}
               isAdmin={isAdmin}
             />
           ) : (
-            <GanttView stages={stages} project={project} />
+            <GanttView
+              stages={isCustomProject ? customStagesWithSchedule : stages}
+              project={project}
+              useStageScheduleOnly={isCustomProject}
+            />
           )
         ) : (
           <Card>
@@ -248,9 +264,13 @@ function toDate(value?: string | null): Date | null {
   return new Date(value);
 }
 
-function GanttView({ stages, project }: { stages: any[]; project: any }) {
-  const projectStart = toDate(project?.start_date);
-  const projectEnd = toDate(project?.end_date);
+function GanttView({ stages, project, useStageScheduleOnly = false }: {
+  stages: any[];
+  project: any;
+  useStageScheduleOnly?: boolean;
+}) {
+  const projectStart = useStageScheduleOnly ? null : toDate(project?.start_date);
+  const projectEnd = useStageScheduleOnly ? null : toDate(project?.end_date);
 
   const stageDates = stages.flatMap((s) => [toDate(s.started_at), toDate(s.completed_at)]).filter(Boolean) as Date[];
 
@@ -294,6 +314,7 @@ function GanttView({ stages, project }: { stages: any[]; project: any }) {
               minDate={minDate}
               maxDate={maxDate}
               totalDays={totalDays}
+              useStageScheduleOnly={useStageScheduleOnly}
             />
           ))}
         </div>
@@ -316,11 +337,12 @@ function GanttView({ stages, project }: { stages: any[]; project: any }) {
   );
 }
 
-function GanttRow({ stage, minDate, maxDate, totalDays }: {
+function GanttRow({ stage, minDate, maxDate, totalDays, useStageScheduleOnly }: {
   stage: any;
   minDate: Date;
   maxDate: Date;
   totalDays: number;
+  useStageScheduleOnly: boolean;
 }) {
   const { data: items } = useProjectStageItems(stage.id);
   const Icon = stageIcons[stage.stage_name] || Circle;
@@ -334,8 +356,8 @@ function GanttRow({ stage, minDate, maxDate, totalDays }: {
   const itemEnds = (items || []).map((i: any) => toDate(i.end_date)).filter(Boolean) as Date[];
 
   const rawStart = toDate(stage.started_at)
-    || (itemStarts.length ? new Date(Math.min(...itemStarts.map(d => d.getTime()))) : null);
-  const rawEnd = (itemEnds.length ? new Date(Math.max(...itemEnds.map(d => d.getTime()))) : null)
+    || (!useStageScheduleOnly && itemStarts.length ? new Date(Math.min(...itemStarts.map(d => d.getTime()))) : null);
+  const rawEnd = (!useStageScheduleOnly && itemEnds.length ? new Date(Math.max(...itemEnds.map(d => d.getTime()))) : null)
     || toDate(stage.completed_at);
 
   if (!rawStart && !rawEnd) {
@@ -352,8 +374,11 @@ function GanttRow({ stage, minDate, maxDate, totalDays }: {
   }
 
   const clamp = (d: Date) => new Date(Math.min(Math.max(d.getTime(), minDate.getTime()), maxDate.getTime()));
-  const start = clamp(rawStart || rawEnd!);
-  const end = clamp(rawEnd || rawStart!);
+  const startSource = rawStart || rawEnd;
+  const endSource = rawEnd || rawStart;
+  if (!startSource || !endSource) return null;
+  const start = clamp(startSource);
+  const end = clamp(endSource);
 
   const offset = differenceInDays(start, minDate);
   const duration = Math.max(differenceInDays(end, start) + 1, 1);

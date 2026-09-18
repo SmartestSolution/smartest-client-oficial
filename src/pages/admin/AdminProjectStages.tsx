@@ -85,6 +85,18 @@ export default function AdminProjectStages() {
     const dates = editingDates[stage.id];
     if (!dates) return;
 
+    const nextStart = dates.started_at !== undefined
+      ? dates.started_at
+      : stage.started_at?.slice(0, 10) || '';
+    const nextEnd = dates.completed_at !== undefined
+      ? dates.completed_at
+      : stage.completed_at?.slice(0, 10) || '';
+
+    if (nextStart && nextEnd && nextEnd < nextStart) {
+      toast.error('A data de término da etapa não pode ser anterior à data de início.');
+      return;
+    }
+
     if (dates.started_at && !isDateInRange(dates.started_at)) {
       toast.error(`Data de início fora do período do projeto (${projectStart || '—'} a ${projectEnd || '—'}).`);
       return;
@@ -161,7 +173,7 @@ export default function AdminProjectStages() {
     const edited = editingDates[stage.id]?.[field];
     if (edited !== undefined) return edited;
     if (!stage[field]) return '';
-    return new Date(stage[field]!).toISOString().split('T')[0];
+    return new Date(stage[field] as string).toISOString().split('T')[0];
   };
 
   const setDateField = (stageId: string, field: 'started_at' | 'completed_at', value: string) => {
@@ -203,7 +215,9 @@ export default function AdminProjectStages() {
                   Gerenciar Etapas
                 </CardTitle>
                 <CardDescription>
-                  Configure datas de início/término para o Gantt. O status é calculado automaticamente pelo checklist.
+                  {project?.project_mode === 'custom'
+                    ? 'As datas das etapas são opcionais. Preencha início e término somente quando quiser usar o Gantt.'
+                    : 'Configure datas de início/término para o Gantt. O status é calculado automaticamente pelo checklist.'}
                   {(projectStart || projectEnd) && (
                     <span className="block mt-1 text-xs">
                       Período permitido: <strong>{projectStart || '—'}</strong> a <strong>{projectEnd || '—'}</strong>
