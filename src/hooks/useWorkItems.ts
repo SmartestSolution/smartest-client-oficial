@@ -197,6 +197,28 @@ export function useWorkItems() {
   });
 }
 
+/** Clientes podem solicitar somente a prioridade, sem alterar execução ou datas. */
+export function useRequestWorkItemPriority() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ item, priority }: { item: WorkItem; priority: WorkPriority }) => {
+      const { error } = await (supabase as any).rpc('request_work_item_priority', {
+        _source: item.source,
+        _item_id: item.id,
+        _priority: priority,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['work-items'] });
+      queryClient.invalidateQueries({ queryKey: ['support-tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['project-stage-items'] });
+      queryClient.invalidateQueries({ queryKey: ['all-stage-items'] });
+    },
+  });
+}
+
 /** Ações executadas direto na Central, atualizando o registro de origem. */
 export function useWorkItemAction() {
   const queryClient = useQueryClient();
