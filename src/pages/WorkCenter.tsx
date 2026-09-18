@@ -26,11 +26,13 @@ import { toast } from '@/hooks/use-toast';
 import {
   useWorkItems,
   useWorkItemAction,
+  useRequestWorkItemPriority,
   BUCKET_LABEL,
   BUCKET_ORDER,
   type WorkItem,
   type WorkBucket,
 } from '@/hooks/useWorkItems';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   AlertTriangle,
   CalendarClock,
@@ -77,8 +79,10 @@ type QuickFilter = 'all' | 'project' | 'support' | 'urgent' | 'late' | 'today' |
 
 export default function WorkCenter() {
   const navigate = useNavigate();
+  const { isAdmin, profile } = useAuth();
   const { data: items, isLoading } = useWorkItems();
   const action = useWorkItemAction();
+  const requestPriority = useRequestWorkItemPriority();
 
   const [quick, setQuick] = useState<QuickFilter>('all');
   const [search, setSearch] = useState('');
@@ -187,6 +191,16 @@ export default function WorkCenter() {
     run(item, 'schedule', item.source === 'support' ? d.toISOString() : d.toISOString().slice(0, 10));
   };
 
+  const changePriority = (item: WorkItem, value: string) => {
+    requestPriority.mutate(
+      { item, priority: value as WorkItem['priority'] },
+      {
+        onSuccess: () => toast({ title: 'Prioridade solicitada' }),
+        onError: (e: any) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
+      },
+    );
+  };
+
   const kpi = [
     { label: 'Urgentes', value: counts.urgent, icon: Flame, filter: 'urgent' as QuickFilter },
     { label: 'Atrasadas', value: counts.late, icon: AlertTriangle, filter: 'late' as QuickFilter },
@@ -209,7 +223,11 @@ export default function WorkCenter() {
       <div className="space-y-6">
         <header>
           <h1 className="text-2xl font-bold text-foreground">Central de Trabalho</h1>
-          <p className="text-muted-foreground">Tudo que precisa ser executado, em uma única fila.</p>
+          <p className="text-muted-foreground">
+            {isAdmin
+              ? 'Tudo que precisa ser executado, em uma única fila.'
+              : `Tarefas e acompanhamentos da ${profile?.company || 'sua empresa'}.`}
+          </p>
         </header>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -243,15 +261,17 @@ export default function WorkCenter() {
           ))}
         </div>
 
-        <div className="grid gap-3 md:grid-cols-5">
+        <div className={`grid gap-3 ${isAdmin ? 'md:grid-cols-5' : 'md:grid-cols-4'}`}>
           <Input placeholder="Buscar atividade..." value={search} onChange={e => setSearch(e.target.value)} />
-          <Select value={client} onValueChange={setClient}>
-            <SelectTrigger><SelectValue placeholder="Cliente" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os clientes</SelectItem>
-              {clients.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          {isAdmin && (
+            <Select value={client} onValueChange={setClient}>
+              <SelectTrigger><SelectValue placeholder="Cliente" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os clientes</SelectItem>
+                {clients.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
           <Select value={project} onValueChange={setProject}>
             <SelectTrigger><SelectValue placeholder="Projeto" /></SelectTrigger>
             <SelectContent>
@@ -343,7 +363,23 @@ export default function WorkCenter() {
                         </div>
 
                         <div className="flex shrink-0 flex-wrap gap-2">
-                          {item.status !== 'done' ? (
+                          {!isAdmin ? (
+                            <Select
+                              value={item.priority}
+                              onValueChange={value => changePriority(item, value)}
+                              disabled={requestPriority.isPending}
+                            >
+                              <SelectTrigger className="h-9 w-[170px]" aria-label={`Solicitar prioridade para ${item.title}`}>
+                                <SelectValue placeholder="Solicitar prioridade" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="urgent">Urgente</SelectItem>
+                                <SelectItem value="high">Alta</SelectItem>
+                                <SelectItem value="medium">Média</SelectItem>
+                                <SelectItem value="low">Baixa</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : item.status !== 'done' ? (
                             <>
                               {item.status !== 'in_progress' && (
                                 <Button size="sm" variant="outline" onClick={() => run(item, 'start')}>
