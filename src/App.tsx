@@ -38,6 +38,7 @@ import AdminProjectAnnouncements from "./pages/admin/AdminProjectAnnouncements";
 import AdminProjectVersions from "./pages/admin/AdminProjectVersions";
 import AdminSupport from "./pages/admin/AdminSupport";
 import AdminUsers from "./pages/admin/AdminUsers";
+import AdminProjects from "./pages/admin/AdminProjects";
 
 const queryClient = new QueryClient();
 
@@ -98,6 +99,9 @@ const App = () => (
             } />
             <Route path="/admin/usuarios" element={
               <ProtectedRoute requireAdmin={true}><AdminUsers /></ProtectedRoute>
+            } />
+            <Route path="/admin/projetos" element={
+              <ProtectedRoute requireAdmin={true}><AdminProjects /></ProtectedRoute>
             } />
             <Route path="/admin/empresas/:clientId/projetos" element={
               <ProtectedRoute requireAdmin={true}><AdminClientProjects /></ProtectedRoute>
