@@ -2,4 +2,7 @@
 - [x] Permitir que clientes apenas solicitem prioridade: urgente, alta, média ou baixa.
 - [x] Manter início, conclusão, agendamento e reabertura exclusivos para administradores.
 - [x] Permitir evoluções padrão com todas as etapas e tarefas do modelo.
-- [x] Permitir evoluções personalizadas com etapas e tarefas criadas pelo administrador.
+- [x] Permitir evoluções personalizadas com etapas e tarefas criadas pelo administrador.- [ ] Permitir compromissos globais com projeto e empresa opcionais
+- [ ] Adicionar o tipo Consultoria à agenda
+- [ ] Exibir reuniões e consultorias na Central de Trabalho
+- [ ] Validar tipos e testes
