@@ -1,5 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { buildTemplateSchedule, DEFAULT_PROJECT_TEMPLATE } from './useProjectStages';
+
+export type EvolutionMode = 'standard' | 'custom';
 
 export interface ProjectEvolution {
   id: string;
@@ -9,17 +12,10 @@ export interface ProjectEvolution {
   status: 'pending' | 'in_progress' | 'completed';
   start_date: string | null;
   end_date: string | null;
+  evolution_mode?: EvolutionMode;
   created_at: string;
   updated_at: string;
 }
-
-const DEFAULT_EVO_STAGES = [
-  'Levantamento',
-  'Modelagem',
-  'Desenvolvimento',
-  'Homologação',
-  'Produção',
-];
 
 export function useProjectEvolutions(projectId: string | undefined) {
   return useQuery({
@@ -41,7 +37,7 @@ export function useProjectEvolutions(projectId: string | undefined) {
 export function useCreateEvolution() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { project_id: string; title: string; description?: string; start_date?: string | null; end_date?: string | null }) => {
+    mutationFn: async (input: { project_id: string; title: string; description?: string; start_date?: string | null; end_date?: string | null; evolution_mode: EvolutionMode }) => {
       const { data: evo, error } = await (supabase as any)
         .from('project_evolutions')
         .insert({
@@ -50,20 +46,59 @@ export function useCreateEvolution() {
           description: input.description || null,
           start_date: input.start_date || null,
           end_date: input.end_date || null,
+          evolution_mode: input.evolution_mode,
         })
         .select()
         .single();
       if (error) throw error;
 
-      // Create default 5 stages
-      const stages = DEFAULT_EVO_STAGES.map((name, idx) => ({
-        evolution_id: evo.id,
-        stage_name: name,
-        order_index: idx,
-        status: 'pending',
-      }));
-      const { error: stageErr } = await (supabase as any).from('evolution_stages').insert(stages);
-      if (stageErr) throw stageErr;
+      if (input.evolution_mode === 'standard') {
+        try {
+          const schedule = buildTemplateSchedule(input.start_date, input.end_date);
+          const stages = DEFAULT_PROJECT_TEMPLATE.map((stage, index) => ({
+            evolution_id: evo.id,
+            stage_name: stage.stage,
+            order_index: index,
+            status: 'pending',
+            started_at: schedule?.[index]?.start_date
+              ? new Date(`${schedule[index].start_date}T12:00:00`).toISOString()
+              : null,
+            completed_at: schedule?.[index]?.end_date
+              ? new Date(`${schedule[index].end_date}T12:00:00`).toISOString()
+              : null,
+          }));
+          const { data: createdStages, error: stageErr } = await (supabase as any)
+            .from('evolution_stages')
+            .insert(stages)
+            .select('id, stage_name');
+          if (stageErr) throw stageErr;
+
+          const items = DEFAULT_PROJECT_TEMPLATE.flatMap((stage, stageIndex) => {
+            const createdStage = (createdStages as { id: string; stage_name: string }[] | null)
+              ?.find(row => row.stage_name === stage.stage);
+            if (!createdStage) return [];
+            return stage.items.map((title, itemIndex) => ({
+              evolution_stage_id: createdStage.id,
+              title,
+              order_index: itemIndex,
+              item_type: 'task',
+              priority: 'medium',
+              start_date: schedule?.[stageIndex]?.items[itemIndex]?.start_date ?? null,
+              end_date: schedule?.[stageIndex]?.items[itemIndex]?.end_date ?? null,
+            }));
+          });
+
+          if (items.length > 0) {
+            const { error: itemErr } = await (supabase as any)
+              .from('evolution_stage_items')
+              .insert(items);
+            if (itemErr) throw itemErr;
+          }
+        } catch (creationError) {
+          await (supabase as any).from('project_evolutions').delete().eq('id', evo.id);
+          throw creationError;
+        }
+      }
       return evo;
     },
     onSuccess: () => {
@@ -144,6 +179,39 @@ export function useUpdateEvolutionStage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['evolution-stages'] });
+    },
+  });
+}
+
+export function useCreateEvolutionStage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ evolutionId, stageName, orderIndex }: { evolutionId: string; stageName: string; orderIndex: number }) => {
+      const name = stageName.trim();
+      if (!name || name.length > 120) throw new Error('Informe um nome de etapa com até 120 caracteres.');
+      const { error } = await (supabase as any).from('evolution_stages').insert({
+        evolution_id: evolutionId,
+        stage_name: name,
+        order_index: orderIndex,
+        status: 'pending',
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['evolution-stages'] }),
+  });
+}
+
+export function useDeleteEvolutionStage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any).from('evolution_stages').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['evolution-stages'] });
+      queryClient.invalidateQueries({ queryKey: ['evolution-stage-items'] });
+      queryClient.invalidateQueries({ queryKey: ['all-evolution-stage-items'] });
     },
   });
 }
