@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useEvolutionStages, useUpdateEvolutionStage, useUpdateEvolution, useProjectEvolutions, EvolutionStage } from '@/hooks/useProjectEvolutions';
+import { useEvolutionStages, useUpdateEvolutionStage, useUpdateEvolution, useProjectEvolutions, useCreateEvolutionStage, useDeleteEvolutionStage, EvolutionStage } from '@/hooks/useProjectEvolutions';
 import { useAllEvolutionStageItems, useEvolutionStageItems } from '@/hooks/useEvolutionStageItems';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ import { StageChecklist } from './StageChecklist';
 import {
   ClipboardList, Database, Code, TestTube, Rocket,
   Circle, Loader2, ChevronDown, ChevronRight,
-  TableIcon, BarChart3, Pencil, FileText,
+  TableIcon, BarChart3, Pencil, FileText, Plus, Trash2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, differenceInDays } from 'date-fns';
@@ -45,10 +45,14 @@ export function EvolutionDetail({ evolutionId, projectId, isAdmin }: Props) {
   const { data: evolutions } = useProjectEvolutions(projectId);
   const evolution = evolutions?.find(e => e.id === evolutionId);
   const updateEvolution = useUpdateEvolution();
+  const createStage = useCreateEvolutionStage();
+  const deleteStage = useDeleteEvolutionStage();
   const [expandedStage, setExpandedStage] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState({ title: '', description: '' });
+  const [newStageName, setNewStageName] = useState('');
+  const isCustom = evolution?.evolution_mode === 'custom';
 
   useEffect(() => {
     if (evolution) setEditForm({ title: evolution.title, description: evolution.description || '' });
@@ -69,6 +73,32 @@ export function EvolutionDetail({ evolutionId, projectId, isAdmin }: Props) {
       setEditOpen(false);
     } catch (e: any) {
       toast.error('Erro: ' + e.message);
+    }
+  };
+
+  const handleCreateStage = async () => {
+    if (!newStageName.trim()) return;
+    try {
+      await createStage.mutateAsync({
+        evolutionId,
+        stageName: newStageName,
+        orderIndex: stages?.length || 0,
+      });
+      setNewStageName('');
+      toast.success('Etapa adicionada');
+    } catch (error: any) {
+      toast.error('Erro: ' + error.message);
+    }
+  };
+
+  const handleDeleteStage = async (stage: EvolutionStage) => {
+    if (!confirm(`Excluir a etapa “${stage.stage_name}” e todas as suas tarefas?`)) return;
+    try {
+      await deleteStage.mutateAsync(stage.id);
+      if (expandedStage === stage.id) setExpandedStage(null);
+      toast.success('Etapa excluída');
+    } catch (error: any) {
+      toast.error('Erro: ' + error.message);
     }
   };
 
@@ -137,7 +167,10 @@ export function EvolutionDetail({ evolutionId, projectId, isAdmin }: Props) {
 
       {/* Header with view toggle */}
       <div className="flex items-center justify-between">
-        <div className="text-sm font-semibold text-muted-foreground uppercase">Etapas da Evolução</div>
+        <div className="flex items-center gap-2">
+          <div className="text-sm font-semibold text-muted-foreground uppercase">Etapas da Evolução</div>
+          <span className="text-xs text-muted-foreground">{isCustom ? 'Personalizada' : 'Padrão'}</span>
+        </div>
         <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
           <Button
             variant={viewMode === 'table' ? 'default' : 'ghost'}
@@ -159,6 +192,22 @@ export function EvolutionDetail({ evolutionId, projectId, isAdmin }: Props) {
           </Button>
         </div>
       </div>
+
+      {isAdmin && isCustom && (
+        <div className="flex gap-2">
+          <Input
+            value={newStageName}
+            onChange={event => setNewStageName(event.target.value)}
+            onKeyDown={event => event.key === 'Enter' && handleCreateStage()}
+            placeholder="Nome da nova etapa"
+            maxLength={120}
+          />
+          <Button onClick={handleCreateStage} disabled={!newStageName.trim() || createStage.isPending}>
+            {createStage.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            Adicionar etapa
+          </Button>
+        </div>
+      )}
 
       {/* Summary */}
       <Card>
@@ -191,6 +240,8 @@ export function EvolutionDetail({ evolutionId, projectId, isAdmin }: Props) {
             setExpandedStage={setExpandedStage}
             projectId={projectId}
             isAdmin={isAdmin}
+            canManageStages={isAdmin && isCustom}
+            onDeleteStage={handleDeleteStage}
           />
         ) : (
           <GanttView stages={stages} />
@@ -220,12 +271,14 @@ function StageStatusBadge({ stageId }: { stageId: string }) {
   );
 }
 
-function TableView({ stages, expandedStage, setExpandedStage, projectId, isAdmin }: {
+function TableView({ stages, expandedStage, setExpandedStage, projectId, isAdmin, canManageStages, onDeleteStage }: {
   stages: EvolutionStage[];
   expandedStage: string | null;
   setExpandedStage: (id: string | null) => void;
   projectId: string;
   isAdmin: boolean;
+  canManageStages: boolean;
+  onDeleteStage: (stage: EvolutionStage) => void;
 }) {
   const updateStage = useUpdateEvolutionStage();
   return (
@@ -250,6 +303,20 @@ function TableView({ stages, expandedStage, setExpandedStage, projectId, isAdmin
                     </CardTitle>
                     <div className="flex items-center gap-2">
                       <StageStatusBadge stageId={stage.id} />
+                       {canManageStages && (
+                         <Button
+                           variant="ghost"
+                           size="icon"
+                           className="h-7 w-7"
+                           aria-label={`Excluir etapa ${stage.stage_name}`}
+                           onClick={event => {
+                             event.stopPropagation();
+                             onDeleteStage(stage);
+                           }}
+                         >
+                           <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                         </Button>
+                       )}
                       {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                     </div>
                   </div>

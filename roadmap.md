@@ -1,3 +1,5 @@
 - [x] Liberar a Central de Trabalho para clientes com isolamento por empresa.
 - [x] Permitir que clientes apenas solicitem prioridade: urgente, alta, média ou baixa.
 - [x] Manter início, conclusão, agendamento e reabertura exclusivos para administradores.
+- [x] Permitir evoluções padrão com todas as etapas e tarefas do modelo.
+- [x] Permitir evoluções personalizadas com etapas e tarefas criadas pelo administrador.

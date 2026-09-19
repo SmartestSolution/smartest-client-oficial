@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { useProjectEvolutions, useCreateEvolution, useDeleteEvolution, ProjectEvolution } from '@/hooks/useProjectEvolutions';
+import { useProjectEvolutions, useCreateEvolution, useDeleteEvolution, ProjectEvolution, type EvolutionMode } from '@/hooks/useProjectEvolutions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Plus, TrendingUp, Loader2, Calendar, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
@@ -25,11 +26,17 @@ export function EvolutionsSection({ projectId, isAdmin, projectCompleted }: Prop
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [form, setForm] = useState({ title: '', description: '', start_date: '', end_date: '' });
+  const [form, setForm] = useState<{ title: string; description: string; start_date: string; end_date: string; evolution_mode: EvolutionMode }>({
+    title: '', description: '', start_date: '', end_date: '', evolution_mode: 'standard',
+  });
 
   const handleCreate = async () => {
     if (!form.title.trim()) {
       toast.error('Informe um título');
+      return;
+    }
+    if (form.start_date && form.end_date && form.end_date < form.start_date) {
+      toast.error('A data de término não pode ser anterior à data de início');
       return;
     }
     try {
@@ -39,9 +46,10 @@ export function EvolutionsSection({ projectId, isAdmin, projectCompleted }: Prop
         description: form.description,
         start_date: form.start_date || null,
         end_date: form.end_date || null,
+        evolution_mode: form.evolution_mode,
       });
-      toast.success('Evolução criada com 5 etapas padrão');
-      setForm({ title: '', description: '', start_date: '', end_date: '' });
+      toast.success(form.evolution_mode === 'standard' ? 'Evolução padrão criada com etapas e tarefas' : 'Evolução personalizada criada');
+      setForm({ title: '', description: '', start_date: '', end_date: '', evolution_mode: 'standard' });
       setDialogOpen(false);
     } catch (e: any) {
       toast.error('Erro: ' + e.message);
@@ -58,7 +66,7 @@ export function EvolutionsSection({ projectId, isAdmin, projectCompleted }: Prop
               Evoluções
             </CardTitle>
             <CardDescription>
-              Novas demandas após a produção. Cada evolução tem suas próprias 5 etapas.
+              Novas demandas após a produção, com estrutura padrão ou personalizada.
             </CardDescription>
           </div>
           {isAdmin && (
@@ -80,6 +88,16 @@ export function EvolutionsSection({ projectId, isAdmin, projectCompleted }: Prop
                   <div>
                     <Label>Descrição</Label>
                     <Textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>Modalidade *</Label>
+                    <Select value={form.evolution_mode} onValueChange={(value: EvolutionMode) => setForm({ ...form, evolution_mode: value })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="standard">Padrão — etapas e tarefas completas</SelectItem>
+                        <SelectItem value="custom">Personalizada — começar vazia</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
@@ -105,7 +123,7 @@ export function EvolutionsSection({ projectId, isAdmin, projectCompleted }: Prop
         </div>
         {isAdmin && !projectCompleted && (
           <p className="text-xs text-muted-foreground mt-2">
-            Evoluções só podem ser criadas após o projeto principal estar concluído (todas as 5 etapas).
+             Evoluções só podem ser criadas após o projeto principal estar concluído.
           </p>
         )}
       </CardHeader>
@@ -172,6 +190,7 @@ function EvolutionItem({ evolution, projectId, expanded, onToggle, onDelete, isA
             )}
           </div>
         </div>
+        <Badge variant="secondary">{evolution.evolution_mode === 'custom' ? 'Personalizada' : 'Padrão'}</Badge>
         <Badge variant="outline">{evolution.status}</Badge>
         {isAdmin && (
           <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onDelete(); }}>
