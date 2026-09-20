@@ -3,7 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 
 export interface GlobalMilestone {
   id: string;
-  project_id: string;
+  project_id: string | null;
+  client_id: string | null;
   title: string;
   description: string | null;
   milestone_type: string;
@@ -12,6 +13,7 @@ export interface GlobalMilestone {
   recurrence: string | null;
   created_at: string;
   project_name?: string;
+  client_name?: string;
 }
 
 export function useAllMilestones() {
@@ -20,12 +22,13 @@ export function useAllMilestones() {
     queryFn: async (): Promise<GlobalMilestone[]> => {
       const { data, error } = await (supabase as any)
         .from('project_milestones')
-        .select('*, projects(name)')
+        .select('*, projects(name), clients(name)')
         .order('due_date');
       if (error) throw error;
       return (data as any[]).map((m: any) => ({
         ...m,
-        project_name: m.projects?.name || 'Projeto',
+        project_name: m.projects?.name || null,
+        client_name: m.clients?.name || null,
       }));
     },
   });
