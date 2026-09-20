@@ -30,6 +30,7 @@ import type { ProjectMilestone } from '@/hooks/useProjectMilestones';
 const typeOptions = [
   { value: 'entrega', label: 'Entrega' },
   { value: 'reuniao', label: 'Reunião' },
+  { value: 'consultoria', label: 'Consultoria' },
   { value: 'marco', label: 'Marco' },
 ];
 
@@ -85,7 +86,7 @@ export default function AdminProjectMilestones() {
     const payload = {
       title: formData.title,
       description: formData.description || null,
-      milestone_type: formData.milestone_type as 'entrega' | 'reuniao' | 'marco',
+      milestone_type: formData.milestone_type as ProjectMilestone['milestone_type'],
       due_date: format(formData.due_date, 'yyyy-MM-dd'),
       status: formData.status as 'pending' | 'in_progress' | 'completed' | 'cancelled',
     };
@@ -96,7 +97,8 @@ export default function AdminProjectMilestones() {
         onError: (err: Error) => toast.error(err.message),
       });
     } else {
-      createMutation.mutate({ ...payload, project_id: projectId! }, {
+      if (!projectId) return;
+      createMutation.mutate({ ...payload, project_id: projectId }, {
         onSuccess: () => { toast.success('Marco criado!'); handleClose(); },
         onError: (err: Error) => toast.error(err.message),
       });

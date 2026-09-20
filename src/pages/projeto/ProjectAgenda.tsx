@@ -27,6 +27,7 @@ import { toast } from 'sonner';
 const typeOptions = [
   { value: 'entrega', label: 'Entrega' },
   { value: 'reuniao', label: 'Reunião' },
+  { value: 'consultoria', label: 'Consultoria' },
   { value: 'marco', label: 'Marco' },
 ];
 
@@ -77,7 +78,7 @@ export default function ProjectAgenda() {
       milestone_type: formData.milestone_type as any,
       due_date: dueDateStr,
       status: computeStatus(dueDateStr) as any,
-      project_id: id!,
+      project_id: id,
       recurrence: formData.recurrence === 'none' ? null : formData.recurrence,
     } as any, {
       onSuccess: () => { toast.success('Compromisso criado!'); handleClose(); },

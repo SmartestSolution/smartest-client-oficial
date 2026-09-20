@@ -6,7 +6,7 @@ export interface ProjectMilestone {
   project_id: string;
   title: string;
   description: string | null;
-  milestone_type: 'entrega' | 'reuniao' | 'marco';
+  milestone_type: 'entrega' | 'reuniao' | 'marco' | 'consultoria';
   due_date: string;
   start_date: string | null;
   status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
