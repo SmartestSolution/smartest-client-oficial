@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
-export type WorkSource = 'project' | 'support';
+export type WorkSource = 'project' | 'support' | 'agenda';
 export type WorkStatus = 'pending' | 'in_progress' | 'done' | 'blocked';
 export type WorkPriority = 'urgent' | 'high' | 'medium' | 'low';
 export type WorkBucket = 'urgent' | 'late' | 'high' | 'today' | 'next' | 'backlog' | 'done';
@@ -98,7 +98,7 @@ export function useWorkItems() {
     queryKey: ['work-items', user?.id, isAdmin],
     enabled: !!user,
     queryFn: async (): Promise<WorkItem[]> => {
-      const [projectsRes, clientsRes, stagesRes, itemsRes, ticketsRes, profilesRes] = await Promise.all([
+      const [projectsRes, clientsRes, stagesRes, itemsRes, ticketsRes, milestonesRes, profilesRes] = await Promise.all([
         supabase.from('projects').select('id, name, client_id'),
         supabase.from('clients').select('id, name'),
         (supabase as any).from('project_stages').select('id, name, project_id'),
@@ -108,6 +108,10 @@ export function useWorkItems() {
         (supabase as any)
           .from('support_tickets')
           .select('id, subject, message, project_id, priority, status, start_at, end_at, created_at, assignee_id, user_id'),
+        (supabase as any)
+          .from('project_milestones')
+          .select('id, title, description, project_id, client_id, milestone_type, due_date, status, created_at')
+          .in('milestone_type', ['reuniao', 'consultoria']),
         supabase.from('profiles').select('user_id, full_name'),
       ]);
 
@@ -176,8 +180,38 @@ export function useWorkItems() {
         return { ...base, bucket: computeBucket(base) };
       });
 
+      const agendaItems: WorkItem[] = (((milestonesRes as any).data || []) as any[]).map((milestone: any) => {
+        const project = milestone.project_id ? projectMap.get(milestone.project_id) : undefined;
+        const clientName = milestone.client_id ? clientMap.get(milestone.client_id) || null : project?.clientName || null;
+        const dueDate = toLocalDate(milestone.due_date);
+        const isPast = !!dueDate && startOfDay(dueDate).getTime() < startOfDay(new Date()).getTime();
+        const base = {
+          id: milestone.id,
+          source: 'agenda' as const,
+          title: milestone.title,
+          description: milestone.description,
+          projectId: milestone.project_id,
+          projectName: project?.name || null,
+          clientName,
+          stageName: milestone.milestone_type === 'consultoria' ? 'Consultoria' : 'Reunião',
+          priority: 'medium' as WorkPriority,
+          status: milestone.status === 'cancelled' || milestone.status === 'completed' || isPast
+            ? ('done' as WorkStatus)
+            : ('pending' as WorkStatus),
+          requestedAt: milestone.created_at,
+          plannedDate: milestone.due_date,
+          dueDate: milestone.due_date,
+          startedAt: null,
+          completedAt: isPast || milestone.status === 'completed' ? milestone.due_date : null,
+          assigneeId: null,
+          assigneeName: null,
+          link: '/agenda',
+        };
+        return { ...base, bucket: computeBucket(base) };
+      });
+
       // As políticas do banco devolvem somente atividades permitidas para o usuário.
-      const all = [...projectItems, ...supportItems];
+      const all = [...projectItems, ...supportItems, ...agendaItems];
       const rank = (w: WorkItem) => BUCKET_ORDER.indexOf(w.bucket);
       return all.sort((a, b) => {
         if (rank(a) !== rank(b)) return rank(a) - rank(b);
@@ -195,6 +229,7 @@ export function useRequestWorkItemPriority() {
 
   return useMutation({
     mutationFn: async ({ item, priority }: { item: WorkItem; priority: WorkPriority }) => {
+      if (item.source === 'agenda') throw new Error('Compromissos de agenda não aceitam prioridade');
       const { error } = await (supabase as any).rpc('request_work_item_priority', {
         _source: item.source,
         _item_id: item.id,
@@ -240,7 +275,9 @@ export function useWorkItemAction() {
         return now;
       })();
 
-      if (item.source === 'project') {
+      if (item.source === 'agenda') {
+        throw new Error('Compromissos de agenda são gerenciados pela Agenda Geral');
+      } else if (item.source === 'project') {
         const updates: any = { updated_at: now };
         if (action === 'start') {
           updates.status = 'in_progress';
