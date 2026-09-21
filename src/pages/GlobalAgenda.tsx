@@ -116,13 +116,14 @@ export default function GlobalAgenda() {
       toast.error('Título e data são obrigatórios');
       return;
     }
+    const selectedProject = projects?.find(project => project.id === formData.project_id);
     const payload = {
       title: formData.title,
       description: formData.description || null,
       milestone_type: formData.milestone_type,
       due_date: format(formData.due_date, 'yyyy-MM-dd'),
       project_id: formData.project_id || null,
-      client_id: formData.client_id || null,
+      client_id: selectedProject?.client_id || formData.client_id || null,
       status: computeStatus(format(formData.due_date, 'yyyy-MM-dd')),
       recurrence: formData.recurrence === 'none' ? null : formData.recurrence,
     };

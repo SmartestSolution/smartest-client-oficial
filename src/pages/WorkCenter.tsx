@@ -348,17 +348,17 @@ export default function WorkCenter() {
                             {item.stageName ? ` · ${item.stageName}` : ''}
                           </p>
                           <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                            {formatDate(item.requestedAt) && (
+                             {item.source !== 'agenda' && formatDate(item.requestedAt) && (
                               <span className="flex items-center gap-1">
                                 <Clock className="h-3 w-3" /> Solicitado {formatDate(item.requestedAt)}
                               </span>
                             )}
                             {formatDate(item.plannedDate) && (
                               <span className="flex items-center gap-1">
-                                <CalendarDays className="h-3 w-3" /> Início {formatDate(item.plannedDate)}
+                                 <CalendarDays className="h-3 w-3" /> {item.source === 'agenda' ? 'Data' : 'Início'} {formatDate(item.plannedDate)}
                               </span>
                             )}
-                            {formatDate(item.dueDate) && (
+                             {item.source !== 'agenda' && formatDate(item.dueDate) && (
                               <span className="flex items-center gap-1">
                                 <CalendarClock className="h-3 w-3" /> Prazo {formatDate(item.dueDate)}
                               </span>
