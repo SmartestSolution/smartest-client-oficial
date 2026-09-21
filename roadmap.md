@@ -6,4 +6,4 @@
 - [x] Permitir compromissos globais com projeto e empresa opcionais
 - [x] Adicionar o tipo Consultoria à agenda
 - [x] Exibir reuniões e consultorias na Central de Trabalho
-- [ ] Validar tipos e testes
+- [x] Validar tipos e testes
