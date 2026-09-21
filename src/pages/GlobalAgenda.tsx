@@ -1,9 +1,11 @@
 import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useAllMilestones, useCreateGlobalMilestone, useUpdateGlobalMilestone, useDeleteGlobalMilestone } from '@/hooks/useAllMilestones';
 import { useAllAgendaEvents } from '@/hooks/useAgendaEvents';
 import { useProjects } from '@/hooks/useProjects';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -21,7 +23,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import {
   CalendarDays, Clock, CheckCircle2, Circle, Loader2, FolderKanban,
-  Plus, CalendarIcon, ChevronLeft, ChevronRight, Package, Users, Flag, Pencil, Trash2,
+  Plus, CalendarIcon, ChevronLeft, ChevronRight, Package, Users, Flag, Pencil, Trash2, BriefcaseBusiness, Building2,
 } from 'lucide-react';
 import {
   format, isToday, isTomorrow, isPast, isFuture, isSameMonth, isSameDay,
@@ -33,12 +35,14 @@ import { toast } from 'sonner';
 const typeConfig: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   entrega: { label: 'Entrega', icon: Package, color: 'bg-primary/10 text-primary border-primary/20' },
   reuniao: { label: 'Reunião', icon: Users, color: 'bg-accent/50 text-accent-foreground border-accent' },
+  consultoria: { label: 'Consultoria', icon: BriefcaseBusiness, color: 'bg-warning/10 text-warning border-warning/20' },
   marco: { label: 'Marco', icon: Flag, color: 'bg-success/10 text-success border-success/20' },
 };
 
 const typeOptions = [
   { value: 'entrega', label: 'Entrega' },
   { value: 'reuniao', label: 'Reunião' },
+  { value: 'consultoria', label: 'Consultoria' },
   { value: 'marco', label: 'Marco' },
 ];
 
@@ -68,6 +72,14 @@ export default function GlobalAgenda() {
   const { data: milestones, isLoading } = useAllMilestones();
   const { data: events } = useAllAgendaEvents();
   const { data: projects } = useProjects();
+  const { data: clients } = useQuery({
+    queryKey: ['agenda-clients'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('clients').select('id, name').order('name');
+      if (error) throw error;
+      return data;
+    },
+  });
   const { isAdmin } = useAuth();
   const createMutation = useCreateGlobalMilestone();
   const updateMutation = useUpdateGlobalMilestone();
@@ -79,13 +91,13 @@ export default function GlobalAgenda() {
   const [formData, setFormData] = useState({
     title: '', description: '', milestone_type: 'entrega',
     due_date: undefined as Date | undefined,
-    project_id: '', recurrence: 'none',
+    project_id: '', client_id: '', recurrence: 'none',
   });
 
   const handleClose = () => {
     setIsOpen(false);
     setEditing(null);
-    setFormData({ title: '', description: '', milestone_type: 'entrega', due_date: undefined, project_id: '', recurrence: 'none' });
+    setFormData({ title: '', description: '', milestone_type: 'entrega', due_date: undefined, project_id: '', client_id: '', recurrence: 'none' });
   };
 
   const handleEdit = (m: any) => {
@@ -93,23 +105,25 @@ export default function GlobalAgenda() {
     setFormData({
       title: m.title, description: m.description || '',
       milestone_type: m.milestone_type, due_date: new Date(m.due_date),
-      project_id: m.project_id, recurrence: m.recurrence || 'none',
+      project_id: m.project_id || '', client_id: m.client_id || '', recurrence: m.recurrence || 'none',
     });
     setIsOpen(true);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title.trim() || !formData.due_date || !formData.project_id) {
-      toast.error('Título, projeto e data são obrigatórios');
+    if (!formData.title.trim() || !formData.due_date) {
+      toast.error('Título e data são obrigatórios');
       return;
     }
+    const selectedProject = projects?.find(project => project.id === formData.project_id);
     const payload = {
       title: formData.title,
       description: formData.description || null,
       milestone_type: formData.milestone_type,
       due_date: format(formData.due_date, 'yyyy-MM-dd'),
-      project_id: formData.project_id,
+      project_id: formData.project_id || null,
+      client_id: selectedProject?.client_id || formData.client_id || null,
       status: computeStatus(format(formData.due_date, 'yyyy-MM-dd')),
       recurrence: formData.recurrence === 'none' ? null : formData.recurrence,
     };
@@ -168,7 +182,7 @@ export default function GlobalAgenda() {
           {isAdmin && (
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
               <DialogTrigger asChild>
-                <Button onClick={() => { setEditing(null); setFormData({ title: '', description: '', milestone_type: 'entrega', due_date: undefined, project_id: '', recurrence: 'none' }); }}>
+                <Button onClick={() => { setEditing(null); setFormData({ title: '', description: '', milestone_type: 'entrega', due_date: undefined, project_id: '', client_id: '', recurrence: 'none' }); }}>
                   <Plus className="h-4 w-4 mr-2" /> Novo Compromisso
                 </Button>
               </DialogTrigger>
@@ -179,14 +193,30 @@ export default function GlobalAgenda() {
                 </DialogHeader>
                 <form onSubmit={handleSubmit}>
                   <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label>Projeto *</Label>
-                      <Select value={formData.project_id} onValueChange={v => setFormData({ ...formData, project_id: v })}>
-                        <SelectTrigger><SelectValue placeholder="Selecione o projeto" /></SelectTrigger>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Empresa (opcional)</Label>
+                        <Select value={formData.client_id || 'none'} onValueChange={v => setFormData({ ...formData, client_id: v === 'none' ? '' : v, project_id: formData.project_id && projects?.find(p => p.id === formData.project_id)?.client_id !== v ? '' : formData.project_id })}>
+                          <SelectTrigger><SelectValue placeholder="Sem empresa" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Sem empresa</SelectItem>
+                            {clients?.map(client => <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Projeto (opcional)</Label>
+                        <Select value={formData.project_id || 'none'} onValueChange={v => {
+                          const project = projects?.find(item => item.id === v);
+                          setFormData({ ...formData, project_id: v === 'none' ? '' : v, client_id: project?.client_id || formData.client_id });
+                        }}>
+                        <SelectTrigger><SelectValue placeholder="Sem projeto" /></SelectTrigger>
                         <SelectContent>
-                          {projects?.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                          <SelectItem value="none">Sem projeto</SelectItem>
+                          {projects?.filter(project => !formData.client_id || project.client_id === formData.client_id).map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                         </SelectContent>
-                      </Select>
+                        </Select>
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label>Título *</Label>
@@ -296,7 +326,7 @@ export default function GlobalAgenda() {
                               <div
                                 key={m.id}
                                 className={`text-[10px] leading-tight px-1 py-0.5 rounded border truncate cursor-pointer ${cfg.color} ${m.autoStatus === 'completed' ? 'line-through opacity-60' : ''}`}
-                                title={`${m.title} — ${m.project_name} — ${statusDisplay[m.autoStatus]?.label}`}
+                                title={`${m.title} — ${m.project_name || m.client_name || 'Agenda geral'} — ${statusDisplay[m.autoStatus]?.label}`}
                                 onClick={() => isAdmin && handleEdit(m)}
                               >
                                 {m.title}
@@ -367,7 +397,8 @@ export default function GlobalAgenda() {
                             </div>
                             <div className="flex items-center gap-3 mt-1">
                               <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                <FolderKanban className="h-3 w-3" /> {m.project_name}
+                                 {m.project_name ? <FolderKanban className="h-3 w-3" /> : <Building2 className="h-3 w-3" />}
+                                 {m.project_name || m.client_name || 'Agenda geral'}
                               </span>
                               <Badge variant="outline" className={`text-[10px] ${cfg.color}`}>{cfg.label}</Badge>
                             </div>
@@ -411,7 +442,7 @@ export default function GlobalAgenda() {
                         <CheckCircle2 className="h-5 w-5 text-primary shrink-0" />
                         <div className="flex-1 min-w-0">
                           <span className="text-sm font-medium line-through">{m.title}</span>
-                          <span className="text-xs text-muted-foreground ml-2">{m.project_name}</span>
+                           <span className="text-xs text-muted-foreground ml-2">{m.project_name || m.client_name || 'Agenda geral'}</span>
                         </div>
                         <span className="text-xs text-muted-foreground">
                           {format(new Date(m.due_date), 'dd/MM/yyyy', { locale: ptBR })}

@@ -43,6 +43,7 @@ import {
   Flame,
   LifeBuoy,
   FolderKanban,
+  BriefcaseBusiness,
   Play,
   RotateCcw,
 } from 'lucide-react';
@@ -75,7 +76,7 @@ const formatDate = (value: string | null) => {
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 };
 
-type QuickFilter = 'all' | 'project' | 'support' | 'urgent' | 'late' | 'today' | 'next';
+type QuickFilter = 'all' | 'project' | 'support' | 'agenda' | 'urgent' | 'late' | 'today' | 'next';
 
 export default function WorkCenter() {
   const navigate = useNavigate();
@@ -109,6 +110,7 @@ export default function WorkCenter() {
       if (status !== 'all' && status !== 'open' && i.status !== status) return false;
       if (quick === 'project' && i.source !== 'project') return false;
       if (quick === 'support' && i.source !== 'support') return false;
+      if (quick === 'agenda' && i.source !== 'agenda') return false;
       if (quick === 'urgent' && i.bucket !== 'urgent') return false;
       if (quick === 'late' && i.bucket !== 'late') return false;
       if (quick === 'today' && i.bucket !== 'today') return false;
@@ -212,6 +214,7 @@ export default function WorkCenter() {
     { key: 'all', label: 'Todos' },
     { key: 'project', label: 'Projetos' },
     { key: 'support', label: 'Suportes' },
+    { key: 'agenda', label: 'Agenda' },
     { key: 'urgent', label: 'Urgentes' },
     { key: 'late', label: 'Atrasadas' },
     { key: 'today', label: 'Hoje' },
@@ -329,6 +332,8 @@ export default function WorkCenter() {
                           <div className="flex flex-wrap items-center gap-2">
                             {item.source === 'support' ? (
                               <LifeBuoy className="h-4 w-4 text-muted-foreground" />
+                            ) : item.source === 'agenda' ? (
+                              <BriefcaseBusiness className="h-4 w-4 text-muted-foreground" />
                             ) : (
                               <FolderKanban className="h-4 w-4 text-muted-foreground" />
                             )}
@@ -337,23 +342,23 @@ export default function WorkCenter() {
                             <Badge variant="outline">{statusLabel[item.status]}</Badge>
                           </div>
                           <p className="text-sm text-muted-foreground">
-                            {item.source === 'support' ? 'Suporte' : 'Projeto'}
+                             {item.source === 'support' ? 'Suporte' : item.source === 'agenda' ? 'Agenda' : 'Projeto'}
                             {item.projectName ? ` · ${item.projectName}` : ''}
                             {item.clientName ? ` · ${item.clientName}` : ''}
                             {item.stageName ? ` · ${item.stageName}` : ''}
                           </p>
                           <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                            {formatDate(item.requestedAt) && (
+                             {item.source !== 'agenda' && formatDate(item.requestedAt) && (
                               <span className="flex items-center gap-1">
                                 <Clock className="h-3 w-3" /> Solicitado {formatDate(item.requestedAt)}
                               </span>
                             )}
                             {formatDate(item.plannedDate) && (
                               <span className="flex items-center gap-1">
-                                <CalendarDays className="h-3 w-3" /> Início {formatDate(item.plannedDate)}
+                                 <CalendarDays className="h-3 w-3" /> {item.source === 'agenda' ? 'Data' : 'Início'} {formatDate(item.plannedDate)}
                               </span>
                             )}
-                            {formatDate(item.dueDate) && (
+                             {item.source !== 'agenda' && formatDate(item.dueDate) && (
                               <span className="flex items-center gap-1">
                                 <CalendarClock className="h-3 w-3" /> Prazo {formatDate(item.dueDate)}
                               </span>
@@ -363,7 +368,7 @@ export default function WorkCenter() {
                         </div>
 
                         <div className="flex shrink-0 flex-wrap gap-2">
-                          {!isAdmin ? (
+                          {item.source === 'agenda' ? null : !isAdmin ? (
                             <Select
                               value={item.priority}
                               onValueChange={value => changePriority(item, value)}

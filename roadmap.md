@@ -3,7 +3,7 @@
 - [x] Manter início, conclusão, agendamento e reabertura exclusivos para administradores.
 - [x] Permitir evoluções padrão com todas as etapas e tarefas do modelo.
 - [x] Permitir evoluções personalizadas com etapas e tarefas criadas pelo administrador.
-- [ ] Permitir compromissos globais com projeto e empresa opcionais
-- [ ] Adicionar o tipo Consultoria à agenda
-- [ ] Exibir reuniões e consultorias na Central de Trabalho
-- [ ] Validar tipos e testes
+- [x] Permitir compromissos globais com projeto e empresa opcionais
+- [x] Adicionar o tipo Consultoria à agenda
+- [x] Exibir reuniões e consultorias na Central de Trabalho
+- [x] Validar tipos e testes
