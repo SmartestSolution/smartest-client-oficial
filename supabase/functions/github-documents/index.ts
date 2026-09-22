@@ -68,15 +68,20 @@ Deno.serve(async (req) => {
     const fullPath = normalizePath((project as Record<string, string | null>).github_path || '', requestedPath);
     const query = branch ? `?ref=${encodeURIComponent(branch)}` : '';
     const encodedPath = fullPath.split('/').map(encodeURIComponent).join('/');
-    const url = `${GATEWAY_URL}/repos/${repo}/contents/${encodedPath}${query}`;
+    const url = useGateway
+      ? `${GATEWAY_URL}/repos/${repo}/contents/${encodedPath}${query}`
+      : `https://api.github.com/repos/${repo}/contents/${encodedPath}${query}`;
+    const headers: Record<string, string> = {
+      Accept: action === 'file' ? 'application/vnd.github.raw' : 'application/vnd.github+json',
+    };
+    if (useGateway) {
+      headers.Authorization = `Bearer ${LOVABLE_API_KEY}`;
+      headers['X-Connection-Api-Key'] = GITHUB_API_KEY!;
+    } else {
+      headers.Authorization = `Bearer ${GITHUB_TOKEN}`;
+    }
 
-    const response = await fetch(url, {
-      headers: {
-        Accept: action === 'file' ? 'application/vnd.github.raw' : 'application/vnd.github+json',
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        'X-Connection-Api-Key': GITHUB_API_KEY,
-      },
-    });
+    const response = await fetch(url, { headers });
 
     if (!response.ok) {
       const details = await response.text();
