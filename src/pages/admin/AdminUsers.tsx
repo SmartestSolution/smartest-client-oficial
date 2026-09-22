@@ -262,6 +262,7 @@ export default function AdminUsers() {
                     <TableHead>Email</TableHead>
                     <TableHead>Nível</TableHead>
                     <TableHead>Empresa</TableHead>
+                    <TableHead>Projetos</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
