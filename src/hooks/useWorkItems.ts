@@ -147,7 +147,8 @@ export function useWorkItems() {
           projectName: project?.name || null,
           clientName: project?.clientName || null,
           stageName: stage?.name || null,
-          priority: mapItemPriority(it.priority),
+          priority: 'medium' as WorkPriority,
+          scheduled: !!(it.start_date || it.end_date),
           status: it.is_completed
             ? ('done' as WorkStatus)
             : it.status === 'in_progress' || it.status === 'review'
@@ -177,6 +178,7 @@ export function useWorkItems() {
           clientName: project?.clientName || null,
           stageName: null,
           priority: mapTicketPriority(t.priority),
+          scheduled: !!t.start_at,
           status: mapTicketStatus(t.status),
           requestedAt: t.created_at,
           plannedDate: t.start_at,
@@ -203,7 +205,8 @@ export function useWorkItems() {
           projectName: project?.name || null,
           clientName: project?.clientName || null,
           stageName: evolution ? `${evolution.title} · ${stage?.stage_name || 'Etapa'}` : stage?.stage_name || null,
-          priority: mapItemPriority(item.priority),
+          priority: 'medium' as WorkPriority,
+          scheduled: !!(item.start_date || item.end_date),
           status: item.is_completed
             ? ('done' as WorkStatus)
             : item.status === 'in_progress' || item.status === 'review'
@@ -237,6 +240,7 @@ export function useWorkItems() {
           clientName,
           stageName: milestone.milestone_type === 'consultoria' ? 'Consultoria' : 'Reunião',
           priority: 'medium' as WorkPriority,
+          scheduled: !!milestone.due_date,
           status: milestone.status === 'cancelled' || milestone.status === 'completed' || isPast
             ? ('done' as WorkStatus)
             : ('pending' as WorkStatus),
