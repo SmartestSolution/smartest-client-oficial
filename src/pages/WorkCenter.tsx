@@ -119,7 +119,8 @@ export default function WorkCenter() {
       if (quick === 'next' && i.bucket !== 'next') return false;
       if (client !== 'all' && i.clientName !== client) return false;
       if (project !== 'all' && i.projectName !== project) return false;
-      if (priority !== 'all' && i.priority !== priority) return false;
+      // Prioridade existe apenas no suporte.
+      if (priority !== 'all' && (i.source !== 'support' || i.priority !== priority)) return false;
       if (search && !`${i.title} ${i.projectName ?? ''} ${i.clientName ?? ''}`.toLowerCase().includes(search.toLowerCase()))
         return false;
       return true;
@@ -288,7 +289,7 @@ export default function WorkCenter() {
           <Select value={priority} onValueChange={setPriority}>
             <SelectTrigger><SelectValue placeholder="Prioridade" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todas as prioridades</SelectItem>
+              <SelectItem value="all">Prioridade (suporte)</SelectItem>
               <SelectItem value="urgent">Urgente</SelectItem>
               <SelectItem value="high">Alta</SelectItem>
               <SelectItem value="medium">Média</SelectItem>
@@ -343,7 +344,11 @@ export default function WorkCenter() {
                               <FolderKanban className="h-4 w-4 text-muted-foreground" />
                             )}
                             <span className="font-medium text-foreground">{item.title}</span>
-                            <Badge className={priorityClass[item.priority]}>{priorityLabel[item.priority]}</Badge>
+                            {item.source === 'support' ? (
+                              <Badge className={priorityClass[item.priority]}>{priorityLabel[item.priority]}</Badge>
+                            ) : (
+                              <Badge variant="outline">{item.scheduled ? 'Agendado' : 'Sem data'}</Badge>
+                            )}
                             <Badge variant="outline">{statusLabel[item.status]}</Badge>
                           </div>
                           <p className="text-sm text-muted-foreground">
@@ -374,6 +379,7 @@ export default function WorkCenter() {
 
                         <div className="flex shrink-0 flex-wrap gap-2">
                           {item.source === 'agenda' ? null : !isAdmin ? (
+                            item.source !== 'support' ? null : (
                             <Select
                               value={item.priority}
                               onValueChange={value => changePriority(item, value)}
@@ -389,6 +395,7 @@ export default function WorkCenter() {
                                 <SelectItem value="low">Baixa</SelectItem>
                               </SelectContent>
                             </Select>
+                            )
                           ) : item.status !== 'done' ? (
                             <>
                               {item.status !== 'in_progress' && (

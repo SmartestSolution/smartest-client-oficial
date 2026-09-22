@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { useProjectStageItems, useCreateStageItem, useUpdateStageItem, useDeleteStageItem, type StageItemType, type StageItemPriority } from '@/hooks/useProjectStageItems';
+import { useProjectStageItems, useCreateStageItem, useUpdateStageItem, useDeleteStageItem, type StageItemType } from '@/hooks/useProjectStageItems';
 import { useEvolutionStageItems, useCreateEvolutionStageItem, useUpdateEvolutionStageItem, useDeleteEvolutionStageItem } from '@/hooks/useEvolutionStageItems';
 import { useAdminUsers } from '@/hooks/useSupportTickets';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,11 +25,11 @@ const TYPE_OPTIONS: { value: StageItemType; label: string }[] = [
 ];
 const TYPE_LABEL = Object.fromEntries(TYPE_OPTIONS.map(t => [t.value, t.label])) as Record<string, string>;
 
-const PRIORITY_OPTIONS: { value: StageItemPriority; label: string; cls: string }[] = [
-  { value: 'low',    label: '🟢 Baixa',  cls: 'bg-muted text-muted-foreground' },
-  { value: 'medium', label: '🟡 Média',  cls: 'bg-warning/10 text-warning' },
-  { value: 'high',   label: '🟠 Alta',   cls: 'bg-orange-500/10 text-orange-600 dark:text-orange-400' },
-];
+/** Tarefas não têm prioridade: quando possuem datas, ficam "Agendadas". */
+const scheduleBadge = (item: any) =>
+  item.start_date || item.end_date
+    ? { label: 'Agendado', cls: 'bg-primary/10 text-primary border-primary/30' }
+    : { label: 'Sem data', cls: 'bg-muted text-muted-foreground' };
 
 interface StageChecklistProps {
   stageId: string;
@@ -85,7 +85,6 @@ export function StageChecklist({ stageId, projectId, isAdmin, source = 'project'
 
   const [newItemTitle, setNewItemTitle] = useState('');
   const [newItemType, setNewItemType] = useState<StageItemType>('task');
-  const [newItemPriority, setNewItemPriority] = useState<StageItemPriority>('medium');
   const [uploadingItemId, setUploadingItemId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
@@ -97,14 +96,12 @@ export function StageChecklist({ stageId, projectId, isAdmin, source = 'project'
         stage_id: stageId,
         title: newItemTitle.trim(),
         item_type: newItemType,
-        priority: newItemPriority,
         order_index: items?.length || 0,
       },
       {
         onSuccess: () => {
           setNewItemTitle('');
           setNewItemType('task');
-          setNewItemPriority('medium');
           toast.success('Item adicionado!');
         },
         onError: (err: Error) => toast.error('Erro: ' + err.message),
@@ -279,27 +276,17 @@ export function StageChecklist({ stageId, projectId, isAdmin, source = 'project'
                       ))}
                     </SelectContent>
                   </Select>
-                  <Select
-                    value={item.priority || 'medium'}
-                    onValueChange={(v) => updateItem.mutate({ id: item.id, updates: { priority: v as StageItemPriority } as any })}
-                  >
-                    <SelectTrigger className="h-6 w-[100px] text-[11px] px-2">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PRIORITY_OPTIONS.map(o => (
-                        <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0 h-5', scheduleBadge(item).cls)}>
+                    {scheduleBadge(item).label}
+                  </Badge>
                 </>
               ) : (
                 <>
                   <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5">
                     {TYPE_LABEL[item.item_type] || 'Tarefa'}
                   </Badge>
-                  <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0 h-5', PRIORITY_OPTIONS.find(p => p.value === item.priority)?.cls)}>
-                    {PRIORITY_OPTIONS.find(p => p.value === item.priority)?.label.replace(/^.+ /, '') || 'Média'}
+                  <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0 h-5', scheduleBadge(item).cls)}>
+                    {scheduleBadge(item).label}
                   </Badge>
                 </>
               )}
@@ -416,16 +403,6 @@ export function StageChecklist({ stageId, projectId, isAdmin, source = 'project'
             </SelectTrigger>
             <SelectContent>
               {TYPE_OPTIONS.map(o => (
-                <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={newItemPriority} onValueChange={(v) => setNewItemPriority(v as StageItemPriority)}>
-            <SelectTrigger className="h-8 w-[110px] text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PRIORITY_OPTIONS.map(o => (
                 <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
               ))}
             </SelectContent>

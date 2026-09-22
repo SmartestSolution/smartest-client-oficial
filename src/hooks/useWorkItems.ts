@@ -26,6 +26,8 @@ export interface WorkItem {
   completedAt: string | null;
   assigneeId: string | null;
   assigneeName: string | null;
+  /** Tarefas de projeto/evolução não têm prioridade: ficam "Agendadas" quando possuem data. */
+  scheduled: boolean;
   bucket: WorkBucket;
   link: string;
 }
@@ -56,22 +58,18 @@ const mapTicketStatus = (s: string): WorkStatus => {
   return 'pending';
 };
 
-const mapItemPriority = (p: string | null): WorkPriority => {
-  if (p === 'high') return 'high';
-  if (p === 'low') return 'low';
-  return 'medium';
-};
-
 function computeBucket(item: Omit<WorkItem, 'bucket'>): WorkBucket {
   if (item.status === 'done') return 'done';
   const today = new Date();
+  const isSupport = item.source === 'support';
 
   const limit = toLocalDate(item.dueDate) || toLocalDate(item.plannedDate);
   const isLate = !!limit && startOfDay(limit).getTime() < startOfDay(today).getTime();
 
-  if (item.priority === 'urgent') return 'urgent';
+  // Prioridade só existe no suporte; tarefas seguem exclusivamente o cronograma.
+  if (isSupport && item.priority === 'urgent') return 'urgent';
   if (isLate) return 'late';
-  if (item.priority === 'high' && item.source === 'support') return 'high';
+  if (isSupport && item.priority === 'high') return 'high';
 
   const planned = toLocalDate(item.plannedDate);
   if (isSameDay(planned, today) || isSameDay(limit, today)) return 'today';
@@ -149,7 +147,8 @@ export function useWorkItems() {
           projectName: project?.name || null,
           clientName: project?.clientName || null,
           stageName: stage?.name || null,
-          priority: mapItemPriority(it.priority),
+          priority: 'medium' as WorkPriority,
+          scheduled: !!(it.start_date || it.end_date),
           status: it.is_completed
             ? ('done' as WorkStatus)
             : it.status === 'in_progress' || it.status === 'review'
@@ -179,6 +178,7 @@ export function useWorkItems() {
           clientName: project?.clientName || null,
           stageName: null,
           priority: mapTicketPriority(t.priority),
+          scheduled: !!t.start_at,
           status: mapTicketStatus(t.status),
           requestedAt: t.created_at,
           plannedDate: t.start_at,
@@ -205,7 +205,8 @@ export function useWorkItems() {
           projectName: project?.name || null,
           clientName: project?.clientName || null,
           stageName: evolution ? `${evolution.title} · ${stage?.stage_name || 'Etapa'}` : stage?.stage_name || null,
-          priority: mapItemPriority(item.priority),
+          priority: 'medium' as WorkPriority,
+          scheduled: !!(item.start_date || item.end_date),
           status: item.is_completed
             ? ('done' as WorkStatus)
             : item.status === 'in_progress' || item.status === 'review'
@@ -239,6 +240,7 @@ export function useWorkItems() {
           clientName,
           stageName: milestone.milestone_type === 'consultoria' ? 'Consultoria' : 'Reunião',
           priority: 'medium' as WorkPriority,
+          scheduled: !!milestone.due_date,
           status: milestone.status === 'cancelled' || milestone.status === 'completed' || isPast
             ? ('done' as WorkStatus)
             : ('pending' as WorkStatus),
@@ -257,8 +259,11 @@ export function useWorkItems() {
       // As políticas do banco devolvem somente atividades permitidas para o usuário.
       const all = [...projectItems, ...evolutionItems, ...supportItems, ...agendaItems];
       const rank = (w: WorkItem) => BUCKET_ORDER.indexOf(w.bucket);
+      // Ordem: suporte primeiro, depois as tarefas agendadas por data, e por fim as sem data.
+      const sourceRank = (w: WorkItem) => (w.source === 'support' ? 0 : w.scheduled ? 1 : 2);
       return all.sort((a, b) => {
         if (rank(a) !== rank(b)) return rank(a) - rank(b);
+        if (sourceRank(a) !== sourceRank(b)) return sourceRank(a) - sourceRank(b);
         const da = toLocalDate(a.plannedDate || a.dueDate || a.requestedAt)?.getTime() ?? Infinity;
         const db = toLocalDate(b.plannedDate || b.dueDate || b.requestedAt)?.getTime() ?? Infinity;
         return da - db;
