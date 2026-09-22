@@ -276,27 +276,17 @@ export function StageChecklist({ stageId, projectId, isAdmin, source = 'project'
                       ))}
                     </SelectContent>
                   </Select>
-                  <Select
-                    value={item.priority || 'medium'}
-                    onValueChange={(v) => updateItem.mutate({ id: item.id, updates: { priority: v as StageItemPriority } as any })}
-                  >
-                    <SelectTrigger className="h-6 w-[100px] text-[11px] px-2">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PRIORITY_OPTIONS.map(o => (
-                        <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0 h-5', scheduleBadge(item).cls)}>
+                    {scheduleBadge(item).label}
+                  </Badge>
                 </>
               ) : (
                 <>
                   <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5">
                     {TYPE_LABEL[item.item_type] || 'Tarefa'}
                   </Badge>
-                  <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0 h-5', PRIORITY_OPTIONS.find(p => p.value === item.priority)?.cls)}>
-                    {PRIORITY_OPTIONS.find(p => p.value === item.priority)?.label.replace(/^.+ /, '') || 'Média'}
+                  <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0 h-5', scheduleBadge(item).cls)}>
+                    {scheduleBadge(item).label}
                   </Badge>
                 </>
               )}
