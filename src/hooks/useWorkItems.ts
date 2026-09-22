@@ -259,8 +259,11 @@ export function useWorkItems() {
       // As políticas do banco devolvem somente atividades permitidas para o usuário.
       const all = [...projectItems, ...evolutionItems, ...supportItems, ...agendaItems];
       const rank = (w: WorkItem) => BUCKET_ORDER.indexOf(w.bucket);
+      // Ordem: suporte primeiro, depois as tarefas agendadas por data, e por fim as sem data.
+      const sourceRank = (w: WorkItem) => (w.source === 'support' ? 0 : w.scheduled ? 1 : 2);
       return all.sort((a, b) => {
         if (rank(a) !== rank(b)) return rank(a) - rank(b);
+        if (sourceRank(a) !== sourceRank(b)) return sourceRank(a) - sourceRank(b);
         const da = toLocalDate(a.plannedDate || a.dueDate || a.requestedAt)?.getTime() ?? Infinity;
         const db = toLocalDate(b.plannedDate || b.dueDate || b.requestedAt)?.getTime() ?? Infinity;
         return da - db;
