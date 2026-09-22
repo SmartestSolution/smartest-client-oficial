@@ -81,3 +81,22 @@ USING (
     )
   )
 );
+
+-- Suporte: cliente enxerga todos os chamados da sua empresa
+DROP POLICY IF EXISTS "Users can view accessible support tickets" ON public.support_tickets;
+CREATE POLICY "Users can view accessible support tickets"
+ON public.support_tickets FOR SELECT TO authenticated
+USING (
+  public.is_admin()
+  OR auth.uid() = user_id
+  OR (project_id IS NOT NULL AND public.user_can_access_project(project_id))
+  OR EXISTS (
+    SELECT 1
+    FROM public.profiles viewer
+    JOIN public.profiles creator ON creator.user_id = support_tickets.user_id
+    WHERE viewer.user_id = auth.uid()
+      AND viewer.company IS NOT NULL
+      AND creator.company IS NOT NULL
+      AND lower(btrim(viewer.company)) = lower(btrim(creator.company))
+  )
+);
