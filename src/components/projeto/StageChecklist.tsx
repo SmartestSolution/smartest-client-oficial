@@ -407,16 +407,6 @@ export function StageChecklist({ stageId, projectId, isAdmin, source = 'project'
               ))}
             </SelectContent>
           </Select>
-          <Select value={newItemPriority} onValueChange={(v) => setNewItemPriority(v as StageItemPriority)}>
-            <SelectTrigger className="h-8 w-[110px] text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PRIORITY_OPTIONS.map(o => (
-                <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
           <Button
             size="sm"
             variant="outline"
