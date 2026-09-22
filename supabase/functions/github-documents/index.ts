@@ -26,7 +26,11 @@ Deno.serve(async (req) => {
   try {
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     const GITHUB_API_KEY = Deno.env.get('GITHUB_API_KEY');
-    if (!LOVABLE_API_KEY || !GITHUB_API_KEY) return json({ error: 'Conexão com o GitHub não configurada.' }, 500);
+    const GITHUB_TOKEN = Deno.env.get('GITHUB_TOKEN');
+    const useGateway = !GITHUB_TOKEN;
+    if (useGateway && (!LOVABLE_API_KEY || !GITHUB_API_KEY)) {
+      return json({ error: 'Conexão com o GitHub não configurada.' }, 500);
+    }
 
     const authHeader = req.headers.get('Authorization') || '';
     if (!authHeader.startsWith('Bearer ')) return json({ error: 'Não autenticado.' }, 401);
