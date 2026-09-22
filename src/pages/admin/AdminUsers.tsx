@@ -287,6 +287,16 @@ export default function AdminUsers() {
                           <span className="text-xs text-destructive">Sem empresa</span>
                         )}
                       </TableCell>
+                      <TableCell>
+                        {u.role === 'admin' ? (
+                          <span className="text-xs text-muted-foreground">Todos</span>
+                        ) : u.project_ids?.length ? (
+                          <span className="text-xs">{u.project_ids.length}</span>
+                        ) : (
+                          <span className="text-xs text-destructive">Nenhum</span>
+                        )}
+                      </TableCell>
+
 
                       <TableCell className="text-right">
                         <Button variant="ghost" size="icon" onClick={() => handleEdit(u)}>
