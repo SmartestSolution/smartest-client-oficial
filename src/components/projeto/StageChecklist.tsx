@@ -25,11 +25,11 @@ const TYPE_OPTIONS: { value: StageItemType; label: string }[] = [
 ];
 const TYPE_LABEL = Object.fromEntries(TYPE_OPTIONS.map(t => [t.value, t.label])) as Record<string, string>;
 
-const PRIORITY_OPTIONS: { value: StageItemPriority; label: string; cls: string }[] = [
-  { value: 'low',    label: '🟢 Baixa',  cls: 'bg-muted text-muted-foreground' },
-  { value: 'medium', label: '🟡 Média',  cls: 'bg-warning/10 text-warning' },
-  { value: 'high',   label: '🟠 Alta',   cls: 'bg-orange-500/10 text-orange-600 dark:text-orange-400' },
-];
+/** Tarefas não têm prioridade: quando possuem datas, ficam "Agendadas". */
+const scheduleBadge = (item: any) =>
+  item.start_date || item.end_date
+    ? { label: 'Agendado', cls: 'bg-primary/10 text-primary border-primary/30' }
+    : { label: 'Sem data', cls: 'bg-muted text-muted-foreground' };
 
 interface StageChecklistProps {
   stageId: string;
