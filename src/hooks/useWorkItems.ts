@@ -86,7 +86,7 @@ export const BUCKET_LABEL: Record<WorkBucket, string> = {
   high: 'Alta prioridade',
   today: 'Hoje',
   next: 'Próximas',
-  backlog: 'Sem data / Backlog',
+  backlog: 'A agendar (sem data)',
   done: 'Concluídas',
 };
 
