@@ -347,7 +347,9 @@ export default function WorkCenter() {
                             {item.source === 'support' ? (
                               <Badge className={priorityClass[item.priority]}>{priorityLabel[item.priority]}</Badge>
                             ) : (
-                              <Badge variant="outline">{item.scheduled ? 'Agendado' : 'Sem data'}</Badge>
+                              <Badge variant="outline" className={item.scheduled ? undefined : 'border-warning/40 bg-warning/10 text-warning'}>
+                                {item.scheduled ? 'Agendado' : 'Agendar'}
+                              </Badge>
                             )}
                             <Badge variant="outline">{statusLabel[item.status]}</Badge>
                           </div>

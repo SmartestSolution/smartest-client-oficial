@@ -29,7 +29,7 @@ const TYPE_LABEL = Object.fromEntries(TYPE_OPTIONS.map(t => [t.value, t.label]))
 const scheduleBadge = (item: any) =>
   item.start_date || item.end_date
     ? { label: 'Agendado', cls: 'bg-primary/10 text-primary border-primary/30' }
-    : { label: 'Sem data', cls: 'bg-muted text-muted-foreground' };
+    : { label: 'Agendar', cls: 'bg-warning/10 text-warning border-warning/40' };
 
 interface StageChecklistProps {
   stageId: string;
