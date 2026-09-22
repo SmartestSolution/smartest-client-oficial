@@ -1,8 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { expandMilestoneRecurrence } from '@/lib/milestoneRecurrence';
 
-export type WorkSource = 'project' | 'support' | 'agenda';
+export type WorkSource = 'project' | 'evolution' | 'support' | 'agenda';
 export type WorkStatus = 'pending' | 'in_progress' | 'done' | 'blocked';
 export type WorkPriority = 'urgent' | 'high' | 'medium' | 'low';
 export type WorkBucket = 'urgent' | 'late' | 'high' | 'today' | 'next' | 'backlog' | 'done';
@@ -98,7 +99,7 @@ export function useWorkItems() {
     queryKey: ['work-items', user?.id, isAdmin],
     enabled: !!user,
     queryFn: async (): Promise<WorkItem[]> => {
-      const [projectsRes, clientsRes, stagesRes, itemsRes, ticketsRes, milestonesRes, profilesRes] = await Promise.all([
+      const [projectsRes, clientsRes, stagesRes, itemsRes, evolutionsRes, evolutionStagesRes, evolutionItemsRes, ticketsRes, milestonesRes, profilesRes] = await Promise.all([
         supabase.from('projects').select('id, name, client_id'),
         supabase.from('clients').select('id, name'),
         (supabase as any).from('project_stages').select('id, name, project_id'),
@@ -106,11 +107,20 @@ export function useWorkItems() {
           .from('project_stage_items')
           .select('id, stage_id, title, description, is_completed, completed_at, start_date, end_date, priority, status, assignee_id, created_at'),
         (supabase as any)
+          .from('project_evolutions')
+          .select('id, title, project_id'),
+        (supabase as any)
+          .from('evolution_stages')
+          .select('id, evolution_id, stage_name'),
+        (supabase as any)
+          .from('evolution_stage_items')
+          .select('id, evolution_stage_id, title, description, is_completed, completed_at, start_date, end_date, priority, status, assignee_id, created_at'),
+        (supabase as any)
           .from('support_tickets')
           .select('id, subject, message, project_id, priority, status, start_at, end_at, created_at, assignee_id, user_id'),
         (supabase as any)
           .from('project_milestones')
-          .select('id, title, description, project_id, client_id, milestone_type, due_date, status, created_at')
+          .select('id, title, description, project_id, client_id, milestone_type, start_date, due_date, recurrence, status, created_at')
           .in('milestone_type', ['reuniao', 'consultoria']),
         supabase.from('profiles').select('user_id, full_name'),
       ]);
@@ -123,6 +133,8 @@ export function useWorkItems() {
         ]),
       );
       const stageMap = new Map(((stagesRes as any).data || []).map((s: any) => [s.id, s]));
+      const evolutionMap = new Map(((evolutionsRes as any).data || []).map((e: any) => [e.id, e]));
+      const evolutionStageMap = new Map(((evolutionStagesRes as any).data || []).map((stage: any) => [stage.id, stage]));
       const profileMap = new Map(((profilesRes.data || []) as any[]).map((p: any) => [p.user_id, p.full_name]));
 
       const projectItems: WorkItem[] = (((itemsRes as any).data || []) as any[]).map((it: any) => {
@@ -180,13 +192,45 @@ export function useWorkItems() {
         return { ...base, bucket: computeBucket(base) };
       });
 
-      const agendaItems: WorkItem[] = (((milestonesRes as any).data || []) as any[]).map((milestone: any) => {
+      const evolutionItems: WorkItem[] = (((evolutionItemsRes as any).data || []) as any[]).map((item: any) => {
+        const stage = evolutionStageMap.get(item.evolution_stage_id) as any;
+        const evolution = stage ? evolutionMap.get(stage.evolution_id) as any : undefined;
+        const project = evolution ? projectMap.get(evolution.project_id) : undefined;
+        const base = {
+          id: item.id,
+          source: 'evolution' as const,
+          title: item.title,
+          description: item.description,
+          projectId: evolution?.project_id || null,
+          projectName: project?.name || null,
+          clientName: project?.clientName || null,
+          stageName: evolution ? `${evolution.title} · ${stage?.stage_name || 'Etapa'}` : stage?.stage_name || null,
+          priority: mapItemPriority(item.priority),
+          status: item.is_completed
+            ? ('done' as WorkStatus)
+            : item.status === 'in_progress' || item.status === 'review'
+              ? ('in_progress' as WorkStatus)
+              : ('pending' as WorkStatus),
+          requestedAt: item.created_at,
+          plannedDate: item.start_date,
+          dueDate: item.end_date,
+          startedAt: null,
+          completedAt: item.completed_at,
+          assigneeId: item.assignee_id,
+          assigneeName: item.assignee_id ? profileMap.get(item.assignee_id) || null : null,
+          link: evolution?.project_id ? `/projeto/${evolution.project_id}` : '/dashboard',
+        };
+        return { ...base, bucket: computeBucket(base) };
+      });
+
+      const expandedMilestones = expandMilestoneRecurrence((((milestonesRes as any).data || []) as any[]));
+      const agendaItems: WorkItem[] = expandedMilestones.map((milestone: any) => {
         const project = milestone.project_id ? projectMap.get(milestone.project_id) : undefined;
         const clientName = milestone.client_id ? clientMap.get(milestone.client_id) || null : project?.clientName || null;
         const dueDate = toLocalDate(milestone.due_date);
         const isPast = !!dueDate && startOfDay(dueDate).getTime() < startOfDay(new Date()).getTime();
         const base = {
-          id: milestone.id,
+          id: milestone.occurrence_key,
           source: 'agenda' as const,
           title: milestone.title,
           description: milestone.description,
@@ -211,7 +255,7 @@ export function useWorkItems() {
       });
 
       // As políticas do banco devolvem somente atividades permitidas para o usuário.
-      const all = [...projectItems, ...supportItems, ...agendaItems];
+      const all = [...projectItems, ...evolutionItems, ...supportItems, ...agendaItems];
       const rank = (w: WorkItem) => BUCKET_ORDER.indexOf(w.bucket);
       return all.sort((a, b) => {
         if (rank(a) !== rank(b)) return rank(a) - rank(b);
@@ -277,7 +321,7 @@ export function useWorkItemAction() {
 
       if (item.source === 'agenda') {
         throw new Error('Compromissos de agenda são gerenciados pela Agenda Geral');
-      } else if (item.source === 'project') {
+      } else if (item.source === 'project' || item.source === 'evolution') {
         const updates: any = { updated_at: now };
         if (action === 'start') {
           updates.status = 'in_progress';
@@ -301,7 +345,7 @@ export function useWorkItemAction() {
           if (endDate) updates.end_date = endDate.slice(0, 10);
         }
         const { error } = await (supabase as any)
-          .from('project_stage_items')
+          .from(item.source === 'evolution' ? 'evolution_stage_items' : 'project_stage_items')
           .update(updates)
           .eq('id', item.id);
         if (error) throw error;
@@ -339,6 +383,8 @@ export function useWorkItemAction() {
       queryClient.invalidateQueries({ queryKey: ['support-tickets'] });
       queryClient.invalidateQueries({ queryKey: ['project-stage-items'] });
       queryClient.invalidateQueries({ queryKey: ['all-stage-items'] });
+      queryClient.invalidateQueries({ queryKey: ['evolution-stage-items'] });
+      queryClient.invalidateQueries({ queryKey: ['all-evolution-stage-items'] });
     },
   });
 }
