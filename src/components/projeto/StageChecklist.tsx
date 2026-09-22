@@ -85,7 +85,6 @@ export function StageChecklist({ stageId, projectId, isAdmin, source = 'project'
 
   const [newItemTitle, setNewItemTitle] = useState('');
   const [newItemType, setNewItemType] = useState<StageItemType>('task');
-  const [newItemPriority, setNewItemPriority] = useState<StageItemPriority>('medium');
   const [uploadingItemId, setUploadingItemId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
@@ -97,14 +96,12 @@ export function StageChecklist({ stageId, projectId, isAdmin, source = 'project'
         stage_id: stageId,
         title: newItemTitle.trim(),
         item_type: newItemType,
-        priority: newItemPriority,
         order_index: items?.length || 0,
       },
       {
         onSuccess: () => {
           setNewItemTitle('');
           setNewItemType('task');
-          setNewItemPriority('medium');
           toast.success('Item adicionado!');
         },
         onError: (err: Error) => toast.error('Erro: ' + err.message),
