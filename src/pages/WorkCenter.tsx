@@ -44,6 +44,7 @@ import {
   LifeBuoy,
   FolderKanban,
   BriefcaseBusiness,
+  GitBranch,
   Play,
   RotateCcw,
 } from 'lucide-react';
@@ -76,7 +77,7 @@ const formatDate = (value: string | null) => {
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 };
 
-type QuickFilter = 'all' | 'project' | 'support' | 'agenda' | 'urgent' | 'late' | 'today' | 'next';
+type QuickFilter = 'all' | 'project' | 'evolution' | 'support' | 'agenda' | 'urgent' | 'late' | 'today' | 'next';
 
 export default function WorkCenter() {
   const navigate = useNavigate();
@@ -109,6 +110,7 @@ export default function WorkCenter() {
       if (status === 'open' && i.status === 'done') return false;
       if (status !== 'all' && status !== 'open' && i.status !== status) return false;
       if (quick === 'project' && i.source !== 'project') return false;
+      if (quick === 'evolution' && i.source !== 'evolution') return false;
       if (quick === 'support' && i.source !== 'support') return false;
       if (quick === 'agenda' && i.source !== 'agenda') return false;
       if (quick === 'urgent' && i.bucket !== 'urgent') return false;
@@ -213,6 +215,7 @@ export default function WorkCenter() {
   const quickFilters: { key: QuickFilter; label: string }[] = [
     { key: 'all', label: 'Todos' },
     { key: 'project', label: 'Projetos' },
+    { key: 'evolution', label: 'Evoluções' },
     { key: 'support', label: 'Suportes' },
     { key: 'agenda', label: 'Agenda' },
     { key: 'urgent', label: 'Urgentes' },
@@ -334,6 +337,8 @@ export default function WorkCenter() {
                               <LifeBuoy className="h-4 w-4 text-muted-foreground" />
                             ) : item.source === 'agenda' ? (
                               <BriefcaseBusiness className="h-4 w-4 text-muted-foreground" />
+                            ) : item.source === 'evolution' ? (
+                              <GitBranch className="h-4 w-4 text-muted-foreground" />
                             ) : (
                               <FolderKanban className="h-4 w-4 text-muted-foreground" />
                             )}
@@ -342,7 +347,7 @@ export default function WorkCenter() {
                             <Badge variant="outline">{statusLabel[item.status]}</Badge>
                           </div>
                           <p className="text-sm text-muted-foreground">
-                             {item.source === 'support' ? 'Suporte' : item.source === 'agenda' ? 'Agenda' : 'Projeto'}
+                             {item.source === 'support' ? 'Suporte' : item.source === 'agenda' ? 'Agenda' : item.source === 'evolution' ? 'Evolução' : 'Projeto'}
                             {item.projectName ? ` · ${item.projectName}` : ''}
                             {item.clientName ? ` · ${item.clientName}` : ''}
                             {item.stageName ? ` · ${item.stageName}` : ''}

@@ -90,21 +90,23 @@ export default function GlobalAgenda() {
   const [editing, setEditing] = useState<any>(null);
   const [formData, setFormData] = useState({
     title: '', description: '', milestone_type: 'entrega',
-    due_date: undefined as Date | undefined,
+    start_date: undefined as Date | undefined, due_date: undefined as Date | undefined,
     project_id: '', client_id: '', recurrence: 'none',
   });
 
   const handleClose = () => {
     setIsOpen(false);
     setEditing(null);
-    setFormData({ title: '', description: '', milestone_type: 'entrega', due_date: undefined, project_id: '', client_id: '', recurrence: 'none' });
+    setFormData({ title: '', description: '', milestone_type: 'entrega', start_date: undefined, due_date: undefined, project_id: '', client_id: '', recurrence: 'none' });
   };
 
   const handleEdit = (m: any) => {
     setEditing(m);
     setFormData({
       title: m.title, description: m.description || '',
-      milestone_type: m.milestone_type, due_date: new Date(m.due_date),
+      milestone_type: m.milestone_type,
+      start_date: m.start_date ? new Date(`${m.start_date}T12:00:00`) : undefined,
+      due_date: new Date(`${m.series_end_date || m.due_date}T12:00:00`),
       project_id: m.project_id || '', client_id: m.client_id || '', recurrence: m.recurrence || 'none',
     });
     setIsOpen(true);
@@ -116,11 +118,20 @@ export default function GlobalAgenda() {
       toast.error('Título e data são obrigatórios');
       return;
     }
+    if (formData.recurrence !== 'none' && !formData.start_date) {
+      toast.error('Informe o início da recorrência');
+      return;
+    }
+    if (formData.start_date && formData.due_date < formData.start_date) {
+      toast.error('A data de término não pode ser anterior ao início');
+      return;
+    }
     const selectedProject = projects?.find(project => project.id === formData.project_id);
     const payload = {
       title: formData.title,
       description: formData.description || null,
       milestone_type: formData.milestone_type,
+      start_date: formData.start_date ? format(formData.start_date, 'yyyy-MM-dd') : null,
       due_date: format(formData.due_date, 'yyyy-MM-dd'),
       project_id: formData.project_id || null,
       client_id: selectedProject?.client_id || formData.client_id || null,
@@ -182,7 +193,7 @@ export default function GlobalAgenda() {
           {isAdmin && (
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
               <DialogTrigger asChild>
-                <Button onClick={() => { setEditing(null); setFormData({ title: '', description: '', milestone_type: 'entrega', due_date: undefined, project_id: '', client_id: '', recurrence: 'none' }); }}>
+                <Button onClick={() => { setEditing(null); setFormData({ title: '', description: '', milestone_type: 'entrega', start_date: undefined, due_date: undefined, project_id: '', client_id: '', recurrence: 'none' }); }}>
                   <Plus className="h-4 w-4 mr-2" /> Novo Compromisso
                 </Button>
               </DialogTrigger>
@@ -246,19 +257,35 @@ export default function GlobalAgenda() {
                         </Select>
                       </div>
                     </div>
+                    <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Data *</Label>
+                      <Label>{formData.recurrence === 'none' ? 'Início (opcional)' : 'Início da recorrência *'}</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !formData.start_date && "text-muted-foreground")}>
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {formData.start_date ? format(formData.start_date, 'dd/MM/yyyy') : 'Selecione'}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar mode="single" selected={formData.start_date} onSelect={d => setFormData({ ...formData, start_date: d })} initialFocus className="p-3 pointer-events-auto" />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>{formData.recurrence === 'none' ? 'Data *' : 'Término da recorrência *'}</Label>
                       <Popover>
                         <PopoverTrigger asChild>
                           <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !formData.due_date && "text-muted-foreground")}>
                             <CalendarIcon className="mr-2 h-4 w-4" />
-                            {formData.due_date ? format(formData.due_date, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }) : 'Selecione a data'}
+                            {formData.due_date ? format(formData.due_date, 'dd/MM/yyyy') : 'Selecione'}
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar mode="single" selected={formData.due_date} onSelect={d => setFormData({ ...formData, due_date: d })} initialFocus className="p-3 pointer-events-auto" />
+                          <Calendar mode="single" selected={formData.due_date} onSelect={d => setFormData({ ...formData, due_date: d })} disabled={day => !!formData.start_date && day < formData.start_date} initialFocus className="p-3 pointer-events-auto" />
                         </PopoverContent>
                       </Popover>
+                    </div>
                     </div>
                   </div>
                   <DialogFooter>

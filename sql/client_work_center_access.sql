@@ -7,11 +7,15 @@
 ALTER TABLE public.project_stages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.project_stage_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.support_tickets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.project_evolutions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.evolution_stages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.evolution_stage_items ENABLE ROW LEVEL SECURITY;
 
 GRANT SELECT ON public.project_stages TO authenticated;
 GRANT SELECT ON public.project_stage_items TO authenticated;
 GRANT SELECT ON public.support_tickets TO authenticated;
-GRANT ALL ON public.project_stages, public.project_stage_items, public.support_tickets TO service_role;
+GRANT SELECT ON public.project_evolutions, public.evolution_stages, public.evolution_stage_items TO authenticated;
+GRANT ALL ON public.project_stages, public.project_stage_items, public.project_evolutions, public.evolution_stages, public.evolution_stage_items, public.support_tickets TO service_role;
 
 DROP POLICY IF EXISTS "Users can view project stages" ON public.project_stages;
 CREATE POLICY "Users can view project stages"
@@ -80,6 +84,18 @@ BEGIN
          FROM public.project_stages stage
          WHERE stage.id = item.stage_id
            AND public.user_can_access_project(stage.project_id)
+       );
+  ELSIF _source = 'evolution' THEN
+    UPDATE public.evolution_stage_items item
+       SET priority = _priority,
+           updated_at = now()
+     WHERE item.id = _item_id
+       AND EXISTS (
+         SELECT 1
+         FROM public.evolution_stages stage
+         JOIN public.project_evolutions evolution ON evolution.id = stage.evolution_id
+         WHERE stage.id = item.evolution_stage_id
+           AND public.user_can_access_project(evolution.project_id)
        );
   ELSIF _source = 'support' THEN
     UPDATE public.support_tickets ticket
