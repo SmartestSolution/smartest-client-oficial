@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { useProjectStageItems, useCreateStageItem, useUpdateStageItem, useDeleteStageItem, type StageItemType, type StageItemPriority } from '@/hooks/useProjectStageItems';
+import { useProjectStageItems, useCreateStageItem, useUpdateStageItem, useDeleteStageItem, type StageItemType } from '@/hooks/useProjectStageItems';
 import { useEvolutionStageItems, useCreateEvolutionStageItem, useUpdateEvolutionStageItem, useDeleteEvolutionStageItem } from '@/hooks/useEvolutionStageItems';
 import { useAdminUsers } from '@/hooks/useSupportTickets';
 import { useAuth } from '@/contexts/AuthContext';
