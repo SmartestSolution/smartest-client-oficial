@@ -26,6 +26,8 @@ export interface WorkItem {
   completedAt: string | null;
   assigneeId: string | null;
   assigneeName: string | null;
+  /** Tarefas de projeto/evolução não têm prioridade: ficam "Agendadas" quando possuem data. */
+  scheduled: boolean;
   bucket: WorkBucket;
   link: string;
 }
@@ -56,22 +58,18 @@ const mapTicketStatus = (s: string): WorkStatus => {
   return 'pending';
 };
 
-const mapItemPriority = (p: string | null): WorkPriority => {
-  if (p === 'high') return 'high';
-  if (p === 'low') return 'low';
-  return 'medium';
-};
-
 function computeBucket(item: Omit<WorkItem, 'bucket'>): WorkBucket {
   if (item.status === 'done') return 'done';
   const today = new Date();
+  const isSupport = item.source === 'support';
 
   const limit = toLocalDate(item.dueDate) || toLocalDate(item.plannedDate);
   const isLate = !!limit && startOfDay(limit).getTime() < startOfDay(today).getTime();
 
-  if (item.priority === 'urgent') return 'urgent';
+  // Prioridade só existe no suporte; tarefas seguem exclusivamente o cronograma.
+  if (isSupport && item.priority === 'urgent') return 'urgent';
   if (isLate) return 'late';
-  if (item.priority === 'high' && item.source === 'support') return 'high';
+  if (isSupport && item.priority === 'high') return 'high';
 
   const planned = toLocalDate(item.plannedDate);
   if (isSameDay(planned, today) || isSameDay(limit, today)) return 'today';
