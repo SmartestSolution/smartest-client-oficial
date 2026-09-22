@@ -119,7 +119,8 @@ export default function WorkCenter() {
       if (quick === 'next' && i.bucket !== 'next') return false;
       if (client !== 'all' && i.clientName !== client) return false;
       if (project !== 'all' && i.projectName !== project) return false;
-      if (priority !== 'all' && i.priority !== priority) return false;
+      // Prioridade existe apenas no suporte.
+      if (priority !== 'all' && (i.source !== 'support' || i.priority !== priority)) return false;
       if (search && !`${i.title} ${i.projectName ?? ''} ${i.clientName ?? ''}`.toLowerCase().includes(search.toLowerCase()))
         return false;
       return true;
@@ -288,7 +289,7 @@ export default function WorkCenter() {
           <Select value={priority} onValueChange={setPriority}>
             <SelectTrigger><SelectValue placeholder="Prioridade" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todas as prioridades</SelectItem>
+              <SelectItem value="all">Prioridade (suporte)</SelectItem>
               <SelectItem value="urgent">Urgente</SelectItem>
               <SelectItem value="high">Alta</SelectItem>
               <SelectItem value="medium">Média</SelectItem>
