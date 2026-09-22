@@ -222,7 +222,7 @@ export default function AdminUsers() {
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" /> Todos os Usuários
             </CardTitle>
-            <CardDescription>Admins visualizam todos os projetos. Usuários veem apenas os projetos vinculados à sua empresa.</CardDescription>
+            <CardDescription>Admins visualizam tudo. Usuários veem somente os projetos da própria empresa que estiverem marcados para eles.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-wrap items-center gap-3">
@@ -371,13 +371,35 @@ export default function AdminUsers() {
 
                     {form.clientId && (
                       <div className="space-y-2">
-                        <Label>Restringir a projetos específicos (opcional)</Label>
+                        <div className="flex items-center justify-between gap-2">
+                          <Label>Projetos liberados *</Label>
+                          <div className="flex gap-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => setForm(f => ({ ...f, projectIds: formProjects.map(p => p.id) }))}
+                            >
+                              Marcar todos
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => setForm(f => ({ ...f, projectIds: [] }))}
+                            >
+                              Limpar
+                            </Button>
+                          </div>
+                        </div>
                         <Popover open={projectPopoverOpen} onOpenChange={setProjectPopoverOpen}>
                           <PopoverTrigger asChild>
                             <Button type="button" variant="outline" className="w-full justify-between">
                               {form.projectIds.length === 0
-                                ? 'Todos os projetos da empresa'
-                                : `${form.projectIds.length} projeto(s) selecionado(s)`}
+                                ? 'Nenhum projeto selecionado'
+                                : `${form.projectIds.length} de ${formProjects.length} projeto(s)`}
                               <Check className="ml-2 h-4 w-4 opacity-50" />
                             </Button>
                           </PopoverTrigger>
@@ -407,8 +429,10 @@ export default function AdminUsers() {
                             ))}
                           </div>
                         )}
-                        <p className="text-xs text-muted-foreground">
-                          Deixe vazio para dar acesso a todos os projetos da empresa. Se selecionar projetos, o usuário só verá esses.
+                        <p className={cn('text-xs', form.projectIds.length === 0 ? 'text-destructive' : 'text-muted-foreground')}>
+                          {form.projectIds.length === 0
+                            ? 'Sem nenhum projeto marcado, este usuário não verá nada no sistema.'
+                            : 'O usuário verá somente estes projetos e tudo que pertence a eles.'}
                         </p>
                       </div>
                     )}
