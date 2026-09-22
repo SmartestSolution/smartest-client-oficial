@@ -7,6 +7,7 @@
 - [x] Adicionar o tipo Consultoria à agenda
 - [x] Exibir reuniões e consultorias na Central de Trabalho
 - [x] Validar tipos e testes
-- [ ] Exibir tarefas das evoluções na Central de Trabalho
-- [ ] Registrar início e término dos compromissos recorrentes
-- [ ] Validar a Central e a Agenda após as alterações
+- [x] Exibir tarefas das evoluções na Central de Trabalho
+- [x] Registrar início e término dos compromissos recorrentes
+- [x] Validar a Central e a Agenda após as alterações (tipos, testes e revisão das telas)
+
