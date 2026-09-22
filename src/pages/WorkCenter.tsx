@@ -394,6 +394,7 @@ export default function WorkCenter() {
                                 <SelectItem value="low">Baixa</SelectItem>
                               </SelectContent>
                             </Select>
+                            )
                           ) : item.status !== 'done' ? (
                             <>
                               {item.status !== 'in_progress' && (
