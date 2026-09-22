@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { expandMilestoneRecurrence, type ExpandedMilestone } from '@/lib/milestoneRecurrence';
 
 export interface ProjectMilestone {
   id: string;
@@ -15,10 +16,12 @@ export interface ProjectMilestone {
   updated_at: string;
 }
 
+export type DisplayProjectMilestone = ExpandedMilestone<ProjectMilestone>;
+
 export function useProjectMilestones(projectId: string | undefined) {
   return useQuery({
     queryKey: ['project-milestones', projectId],
-    queryFn: async (): Promise<ProjectMilestone[]> => {
+    queryFn: async (): Promise<DisplayProjectMilestone[]> => {
       if (!projectId) return [];
       const { data, error } = await (supabase as any)
         .from('project_milestones')
@@ -26,7 +29,7 @@ export function useProjectMilestones(projectId: string | undefined) {
         .eq('project_id', projectId)
         .order('due_date');
       if (error) throw error;
-      return data as ProjectMilestone[];
+      return expandMilestoneRecurrence(data as ProjectMilestone[]);
     },
     enabled: !!projectId,
   });

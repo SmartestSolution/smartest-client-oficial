@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { expandMilestoneRecurrence, type ExpandedMilestone } from '@/lib/milestoneRecurrence';
 
 export interface GlobalMilestone {
   id: string;
@@ -9,6 +10,7 @@ export interface GlobalMilestone {
   description: string | null;
   milestone_type: string;
   due_date: string;
+  start_date: string | null;
   status: string;
   recurrence: string | null;
   created_at: string;
@@ -16,20 +18,23 @@ export interface GlobalMilestone {
   client_name?: string;
 }
 
+export type DisplayGlobalMilestone = ExpandedMilestone<GlobalMilestone>;
+
 export function useAllMilestones() {
   return useQuery({
     queryKey: ['all-milestones'],
-    queryFn: async (): Promise<GlobalMilestone[]> => {
+    queryFn: async (): Promise<DisplayGlobalMilestone[]> => {
       const { data, error } = await (supabase as any)
         .from('project_milestones')
         .select('*, projects(name), clients(name)')
         .order('due_date');
       if (error) throw error;
-      return (data as any[]).map((m: any) => ({
+      const rows = (data as any[]).map((m: any) => ({
         ...m,
         project_name: m.projects?.name || null,
         client_name: m.clients?.name || null,
-      }));
+      })) as GlobalMilestone[];
+      return expandMilestoneRecurrence(rows);
     },
   });
 }
