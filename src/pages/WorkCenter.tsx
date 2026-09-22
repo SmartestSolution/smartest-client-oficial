@@ -343,7 +343,11 @@ export default function WorkCenter() {
                               <FolderKanban className="h-4 w-4 text-muted-foreground" />
                             )}
                             <span className="font-medium text-foreground">{item.title}</span>
-                            <Badge className={priorityClass[item.priority]}>{priorityLabel[item.priority]}</Badge>
+                            {item.source === 'support' ? (
+                              <Badge className={priorityClass[item.priority]}>{priorityLabel[item.priority]}</Badge>
+                            ) : (
+                              <Badge variant="outline">{item.scheduled ? 'Agendado' : 'Sem data'}</Badge>
+                            )}
                             <Badge variant="outline">{statusLabel[item.status]}</Badge>
                           </div>
                           <p className="text-sm text-muted-foreground">
@@ -374,6 +378,7 @@ export default function WorkCenter() {
 
                         <div className="flex shrink-0 flex-wrap gap-2">
                           {item.source === 'agenda' ? null : !isAdmin ? (
+                            item.source !== 'support' ? null : (
                             <Select
                               value={item.priority}
                               onValueChange={value => changePriority(item, value)}
