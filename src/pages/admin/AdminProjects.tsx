@@ -28,6 +28,9 @@ interface AdminProject {
   project_mode: 'standard' | 'retroactive' | 'custom' | null;
   start_date: string | null;
   end_date: string | null;
+  github_repo?: string | null;
+  github_path?: string | null;
+  github_branch?: string | null;
   created_at: string;
   clients: { name: string } | null;
 }
@@ -41,11 +44,15 @@ type FormData = {
   project_mode: 'standard' | 'retroactive' | 'custom';
   start_date: string;
   end_date: string;
+  github_repo: string;
+  github_path: string;
+  github_branch: string;
 };
 
 const EMPTY_FORM: FormData = {
   client_id: '', name: '', description: '', status: 'active', project_type: 'bi',
   project_mode: 'standard', start_date: '', end_date: '',
+  github_repo: '', github_path: '', github_branch: '',
 };
 const MODE_LABELS = { standard: 'Padrão', retroactive: 'Retroativo', custom: 'Personalizado' };
 const TYPE_LABELS = { bi: 'BI', automation: 'Automação', sql: 'SQL' };
@@ -113,6 +120,7 @@ export default function AdminProjects() {
       client_id: project.client_id, name: project.name, description: project.description || '',
       status: project.status || 'active', project_type: project.project_type || 'bi',
       project_mode: project.project_mode || 'standard', start_date: project.start_date || '', end_date: project.end_date || '',
+      github_repo: project.github_repo || '', github_path: project.github_path || '', github_branch: project.github_branch || '',
     });
     setDialogOpen(true);
   };
@@ -123,6 +131,7 @@ export default function AdminProjects() {
         const { error } = await (supabase as any).from('projects').update({
           client_id: data.client_id, name: data.name.trim(), description: data.description.trim() || null,
           status: data.status, project_type: data.project_type, start_date: data.start_date || null, end_date: data.end_date || null,
+          github_repo: data.github_repo.trim() || null, github_path: data.github_path.trim() || null, github_branch: data.github_branch.trim() || null,
         }).eq('id', editing.id);
         if (error) throw error;
         return { id: editing.id, mode: editing.project_mode || 'standard', created: false };
@@ -133,6 +142,7 @@ export default function AdminProjects() {
         client_id: data.client_id, name: data.name.trim(), description: data.description.trim() || null,
         status: retro ? 'completed' : data.status, project_type: data.project_type, project_mode: data.project_mode,
         start_date: data.start_date || null, end_date: data.end_date || null,
+        github_repo: data.github_repo.trim() || null, github_path: data.github_path.trim() || null, github_branch: data.github_branch.trim() || null,
       }).select('id').single();
       if (error) throw error;
       const projectId = created?.id as string | undefined;
@@ -250,6 +260,9 @@ export default function AdminProjects() {
             <div className="space-y-2"><Label>Status</Label><Select disabled={!editing && form.project_mode === 'retroactive'} value={form.status} onValueChange={(value) => setForm({ ...form, status: value })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="active">Ativo</SelectItem><SelectItem value="completed">Concluído</SelectItem><SelectItem value="archived">Arquivado</SelectItem></SelectContent></Select></div>
             <div className="space-y-2"><Label>Data de início</Label><Input type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} /></div>
             <div className="space-y-2"><Label>Data de término</Label><Input type="date" min={form.start_date || undefined} value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} /></div>
+            <div className="space-y-2 sm:col-span-2"><Label>Repositório do GitHub</Label><Input placeholder="empresa/repositorio" value={form.github_repo} onChange={(e) => setForm({ ...form, github_repo: e.target.value })} /><p className="text-xs text-muted-foreground">Os documentos deste projeto virão direto deste repositório.</p></div>
+            <div className="space-y-2"><Label>Pasta dos documentos</Label><Input placeholder="docs/projeto-x" value={form.github_path} onChange={(e) => setForm({ ...form, github_path: e.target.value })} /></div>
+            <div className="space-y-2"><Label>Branch</Label><Input placeholder="main (opcional)" value={form.github_branch} onChange={(e) => setForm({ ...form, github_branch: e.target.value })} /></div>
           </div><DialogFooter><Button type="button" variant="outline" onClick={closeDialog}>Cancelar</Button><Button type="submit" disabled={saveMutation.isPending}>{saveMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{editing ? 'Salvar' : 'Criar projeto'}</Button></DialogFooter></form>
         </DialogContent>
       </Dialog>
