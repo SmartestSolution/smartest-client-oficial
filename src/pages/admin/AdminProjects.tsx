@@ -28,6 +28,9 @@ interface AdminProject {
   project_mode: 'standard' | 'retroactive' | 'custom' | null;
   start_date: string | null;
   end_date: string | null;
+  github_repo?: string | null;
+  github_path?: string | null;
+  github_branch?: string | null;
   created_at: string;
   clients: { name: string } | null;
 }
@@ -41,11 +44,15 @@ type FormData = {
   project_mode: 'standard' | 'retroactive' | 'custom';
   start_date: string;
   end_date: string;
+  github_repo: string;
+  github_path: string;
+  github_branch: string;
 };
 
 const EMPTY_FORM: FormData = {
   client_id: '', name: '', description: '', status: 'active', project_type: 'bi',
   project_mode: 'standard', start_date: '', end_date: '',
+  github_repo: '', github_path: '', github_branch: '',
 };
 const MODE_LABELS = { standard: 'Padrão', retroactive: 'Retroativo', custom: 'Personalizado' };
 const TYPE_LABELS = { bi: 'BI', automation: 'Automação', sql: 'SQL' };
