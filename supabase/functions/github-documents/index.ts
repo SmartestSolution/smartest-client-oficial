@@ -26,7 +26,11 @@ Deno.serve(async (req) => {
   try {
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     const GITHUB_API_KEY = Deno.env.get('GITHUB_API_KEY');
-    if (!LOVABLE_API_KEY || !GITHUB_API_KEY) return json({ error: 'Conexão com o GitHub não configurada.' }, 500);
+    const GITHUB_TOKEN = Deno.env.get('GITHUB_TOKEN');
+    const useGateway = !GITHUB_TOKEN;
+    if (useGateway && (!LOVABLE_API_KEY || !GITHUB_API_KEY)) {
+      return json({ error: 'Conexão com o GitHub não configurada.' }, 500);
+    }
 
     const authHeader = req.headers.get('Authorization') || '';
     if (!authHeader.startsWith('Bearer ')) return json({ error: 'Não autenticado.' }, 401);
@@ -64,15 +68,20 @@ Deno.serve(async (req) => {
     const fullPath = normalizePath((project as Record<string, string | null>).github_path || '', requestedPath);
     const query = branch ? `?ref=${encodeURIComponent(branch)}` : '';
     const encodedPath = fullPath.split('/').map(encodeURIComponent).join('/');
-    const url = `${GATEWAY_URL}/repos/${repo}/contents/${encodedPath}${query}`;
+    const url = useGateway
+      ? `${GATEWAY_URL}/repos/${repo}/contents/${encodedPath}${query}`
+      : `https://api.github.com/repos/${repo}/contents/${encodedPath}${query}`;
+    const headers: Record<string, string> = {
+      Accept: action === 'file' ? 'application/vnd.github.raw' : 'application/vnd.github+json',
+    };
+    if (useGateway) {
+      headers.Authorization = `Bearer ${LOVABLE_API_KEY}`;
+      headers['X-Connection-Api-Key'] = GITHUB_API_KEY!;
+    } else {
+      headers.Authorization = `Bearer ${GITHUB_TOKEN}`;
+    }
 
-    const response = await fetch(url, {
-      headers: {
-        Accept: action === 'file' ? 'application/vnd.github.raw' : 'application/vnd.github+json',
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        'X-Connection-Api-Key': GITHUB_API_KEY,
-      },
-    });
+    const response = await fetch(url, { headers });
 
     if (!response.ok) {
       const details = await response.text();
