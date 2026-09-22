@@ -120,6 +120,7 @@ export default function AdminProjects() {
       client_id: project.client_id, name: project.name, description: project.description || '',
       status: project.status || 'active', project_type: project.project_type || 'bi',
       project_mode: project.project_mode || 'standard', start_date: project.start_date || '', end_date: project.end_date || '',
+      github_repo: project.github_repo || '', github_path: project.github_path || '', github_branch: project.github_branch || '',
     });
     setDialogOpen(true);
   };
@@ -130,6 +131,7 @@ export default function AdminProjects() {
         const { error } = await (supabase as any).from('projects').update({
           client_id: data.client_id, name: data.name.trim(), description: data.description.trim() || null,
           status: data.status, project_type: data.project_type, start_date: data.start_date || null, end_date: data.end_date || null,
+          github_repo: data.github_repo.trim() || null, github_path: data.github_path.trim() || null, github_branch: data.github_branch.trim() || null,
         }).eq('id', editing.id);
         if (error) throw error;
         return { id: editing.id, mode: editing.project_mode || 'standard', created: false };
@@ -140,6 +142,7 @@ export default function AdminProjects() {
         client_id: data.client_id, name: data.name.trim(), description: data.description.trim() || null,
         status: retro ? 'completed' : data.status, project_type: data.project_type, project_mode: data.project_mode,
         start_date: data.start_date || null, end_date: data.end_date || null,
+        github_repo: data.github_repo.trim() || null, github_path: data.github_path.trim() || null, github_branch: data.github_branch.trim() || null,
       }).select('id').single();
       if (error) throw error;
       const projectId = created?.id as string | undefined;
