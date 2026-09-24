@@ -1,0 +1,11 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # Não reescrever arquivos ou pastas que realmente existem
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Todas as outras rotas devem carregar o React
+  RewriteRule ^ index.html [L]
+</IfModule>
