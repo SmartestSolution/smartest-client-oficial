@@ -19,9 +19,9 @@ export interface GithubListing {
 
 export function useGithubDocuments(projectId: string | undefined, path: string) {
   return useQuery({
-    queryKey: ['github-documents', projectId, path],
+    queryKey: ['github-documentos', projectId, path],
     queryFn: async (): Promise<GithubListing> => {
-      const { data, error } = await supabase.functions.invoke('github-documents', {
+      const { data, error } = await supabase.functions.invoke('github-documentos', {
         body: { projectId, path, action: 'list' },
       });
       if (error) throw error;
@@ -34,7 +34,7 @@ export function useGithubDocuments(projectId: string | undefined, path: string) 
 }
 
 export async function fetchGithubFile(projectId: string, path: string) {
-  const { data, error } = await supabase.functions.invoke('github-documents', {
+  const { data, error } = await supabase.functions.invoke('github-documentos', {
     body: { projectId, path, action: 'file' },
   });
   if (error) throw error;
