@@ -1,0 +1,34 @@
+name: Deploy Automatico Hostinger
+
+on:
+  push:
+    branches:
+      - main # ou master, dependendo do nome da sua branch principal
+
+jobs:
+  web-deploy:
+    name: Build e Deploy via FTP
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar o codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar dependencias e rodar Build
+        run: |
+          npm install
+          npm run build
+
+      - name: Enviar pasta pronta via FTP para a Hostinger
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./dist/ # Altere para ./build/ se o seu projeto gerar a pasta "build" em vez de "dist"
+          server-dir: /public_html/ # Caminho no servidor da Hostinger
