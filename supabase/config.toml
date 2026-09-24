@@ -2,5 +2,5 @@ project_id = "ljhmqjddpeywgirhlwun"
 [functions.bootstrap-admin]
 verify_jwt = false
 
-[functions.github-documents]
+[functions.github-documentos]
 verify_jwt = false

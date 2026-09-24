@@ -123,7 +123,7 @@ Deno.serve(async (req) => {
 
     return json({ repo, branch, path: requestedPath, items });
   } catch (error) {
-    console.error('github-documents error', error);
+    console.error('github-documentos error', error);
     return json({ error: (error as Error).message }, 500);
   }
 });
