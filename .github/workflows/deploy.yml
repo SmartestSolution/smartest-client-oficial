@@ -31,4 +31,4 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./dist/ # Altere para ./build/ se o seu projeto gerar a pasta "build" em vez de "dist"
-          server-dir: /public_html/ # Caminho no servidor da Hostinger
+          server-dir: ./ # Caminho no servidor da Hostinger
